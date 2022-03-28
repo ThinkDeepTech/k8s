@@ -13,7 +13,7 @@ class K8sObjectHandle {
     }
 
     toString() {
-        return this._manifest.toString();
+        return this.manifest.toString();
     }
 }
 

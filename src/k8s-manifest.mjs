@@ -7,6 +7,7 @@ class K8sManifest {
 
         if (configuration.constructor.name in k8s) {
 
+            this._obj = configuration;
             console.log(`Initialized with k8s client object of type: ${configuration.constructor.name}`);
         } else {
             this._yaml = configuration;
