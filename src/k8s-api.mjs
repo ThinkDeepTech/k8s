@@ -53,14 +53,17 @@ class K8sApi {
     }
 
     async create(manifest) {
+        console.log(`Creating k8s object:\n\n${manifest.toString()}`);
         return this._creationStrategy(manifest)();
     }
 
     async listAll(kind, namespace) {
+        console.log(`Listing all objects with kind ${kind}${ !!namespace ? ` in namespace ${namespace}`: ``}.`);
         return this._listAllStrategy(kind, namespace)();
     }
 
     async delete(manifest) {
+        console.log(`Deleting k8s object:\n\n${manifest.toString()}`);
         return this._deletionStrategy(manifest)();
     }
 

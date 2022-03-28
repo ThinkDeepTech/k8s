@@ -90,6 +90,8 @@ class K8sClient {
         for (const item of items) {
 
             if (item.manifest.name === name) {
+
+                console.info(`Target resource found:\n\n${manifest.toString()}`);
                 target = item;
             }
         }
@@ -108,11 +110,7 @@ class K8sClient {
 
             const manifest = new K8sManifest(resource);
 
-            console.log(`
-                Found manifest
-
-                ${manifest.toString()}
-            `);
+            console.log(`Found manifest\n\n${manifest.toString()}`);
 
             targets.push(new K8sObjectHandle(api, manifest));
         }
@@ -137,7 +135,7 @@ class K8sClient {
             throw new Error(`The kind ${kind} specified doesn't map to a known api version.`);
         }
 
-        console.info(`The api version ${apiVersion} is being used as recommended by the kubernetes.io docs.`);
+        console.info(`Found api version ${apiVersion} for kind ${kind}`);
 
         return apiVersion;
     }
