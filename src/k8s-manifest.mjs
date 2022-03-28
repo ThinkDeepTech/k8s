@@ -128,6 +128,8 @@ class K8sManifest {
 
     _handleClientObjectType(typeName, value) {
 
+        console.log(`Creating object of type: ${typeName}`);
+
         let subject = new k8s[typeName]();
 
         for (const attribute in value) {
