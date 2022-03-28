@@ -84,15 +84,15 @@ class K8sClient {
 
     async get(kind, name, namespace) {
 
-        const items = this.getAll(kind, namespace);
+        const handles = await this.getAll(kind, namespace);
 
         let target = null;
-        for (const item of items) {
+        for (const handle of handles) {
 
-            if (item.manifest.name === name) {
+            if (handle.manifest.name === name) {
 
                 console.info(`Target resource found:\n\n${manifest.toString()}`);
-                target = item;
+                target = handle;
             }
         }
 
@@ -105,7 +105,7 @@ class K8sClient {
 
         const {response} = await api.listAll(kind, namespace);
 
-        console.log(`Resource list in getAll:\n\n${JSON.stringify(resourceList)}`);
+        console.log(`Resource list in getAll:\n\n${JSON.stringify(response)}`);
 
         const resourceList = response?.body?.items;
 
