@@ -5,9 +5,6 @@ import yaml from "yaml";
 class K8sManifest {
     constructor(configuration) {
 
-        if (!configuration || !configuration.kind)
-            throw new Error(`The parsed yaml couldn't be used to construct a k8s object.\n${yaml.stringify(parsedYaml)}`);
-
         if (configuration.constructor.name.includes('V')) {
 
             this._obj = configuration;
@@ -18,7 +15,7 @@ class K8sManifest {
 
             this._yaml = configuration;
 
-            console.log(`Yaml configuration found. ${JSON.stringify(configuration)}`)
+            console.log(`Yaml configuration found. ${yaml.stringify(configuration)}`)
 
             const objectPrefix = this._objectVersion(this._yaml.apiVersion);
             this._obj = this._k8sClientObject(`${objectPrefix}${this._yaml.kind}`, this._yaml);
