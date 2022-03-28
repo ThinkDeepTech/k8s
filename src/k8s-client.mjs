@@ -86,6 +86,8 @@ class K8sClient {
 
         const handles = await this.getAll(kind, namespace);
 
+        console.log(`Handles: ${JSON.stringify(handles)}`);
+
         let target = null;
         for (const handle of handles) {
 
@@ -125,7 +127,8 @@ class K8sClient {
 
         let targets = [];
         for (const resource of k8sObject.items) {
-            targets.push(new K8sObjectHandle(api, new K8sManifest(resource)));
+            const manifest = new K8sManifest(resource);
+            targets.push(new K8sObjectHandle(api, manifest));
         }
 
         return targets;

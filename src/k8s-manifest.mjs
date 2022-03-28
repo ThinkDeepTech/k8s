@@ -5,7 +5,7 @@ import yaml from "yaml";
 class K8sManifest {
     constructor(configuration) {
 
-        if (configuration.constructor.name.startsWith('V')) {
+        if (configuration.constructor.name in k8s) {
 
             console.log(`Initialized with k8s client object of type: ${configuration.constructor.name}`);
         } else {
