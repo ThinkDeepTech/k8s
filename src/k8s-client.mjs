@@ -91,7 +91,7 @@ class K8sClient {
 
             if (handle.manifest.metadata.name === name) {
 
-                console.info(`Target resource found:\n\n${manifest.toString()}`);
+                console.info(`Target resource found:\n\n${handle.manifest.toString()}`);
                 target = handle;
             }
         }
@@ -123,7 +123,7 @@ class K8sClient {
 
         let targets = [];
         for (const resource of k8sObject.items) {
-            targets.push(new K8sObjectHandle(api, new K8sManifest(manifest)));
+            targets.push(new K8sObjectHandle(api, new K8sManifest(resource)));
         }
 
         return targets;
