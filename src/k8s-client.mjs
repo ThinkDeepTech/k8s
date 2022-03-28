@@ -89,7 +89,7 @@ class K8sClient {
         let target = null;
         for (const handle of handles) {
 
-            if (handle.manifest.name === name) {
+            if (handle.manifest.metadata.name === name) {
 
                 console.info(`Target resource found:\n\n${manifest.toString()}`);
                 target = handle;
@@ -123,18 +123,7 @@ class K8sClient {
 
         let targets = [];
         for (const resource of k8sObject.items) {
-
-            resource.kind = capitalizeFirstLetter(kind);
-
-            resource.apiVersion = apiVersion;
-
-            console.log(`Creating manifest from resource:\n\n${JSON.stringify(resource)}`);
-
-            const manifest = new K8sManifest(resource);
-
-            console.log(`Found manifest\n\n${manifest.toString()}`);
-
-            targets.push(new K8sObjectHandle(api, manifest));
+            targets.push(new K8sObjectHandle(api, new K8sManifest(manifest)));
         }
 
         return targets;
