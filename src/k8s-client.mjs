@@ -101,20 +101,32 @@ class K8sClient {
 
     async getAll(kind, namespace) {
 
-        const api = new K8sApi(this._apiVersion(kind));
+        const apiVersion = this._apiVersion(kind);
+
+        const api = new K8sApi(apiVersion);
 
         const {response} = await api.listAll(kind, namespace);
 
         console.log(`Resource list in getAll:\n\n${JSON.stringify(response)}`);
 
-        const resourceList = response?.body?.items;
+        const body = response?.body;
 
-        if (!resourceList) {
-            throw new Error(`Resource list was undefined. Response body: ${JSON.stringify(response?.body)}`);
+        if (!body) {
+            throw new Error(`The body returned from the k8s node client was invalid. Response body: ${JSON.stringify(body)}`);
         }
 
+        const listManifest = new K8sManifest(body);
+
+        const k8sObject = listManifest.k8sClientObject();
+
+        console.log(`Received list manifest:\n\n${listManifest.toString()}`);
+
         let targets = [];
-        for (const resource of resourceList) {
+        for (const resource of k8sObject.items) {
+
+            resource.kind = capitalizeFirstLetter(kind);
+
+            resource.apiVersion = apiVersion;
 
             const manifest = new K8sManifest(resource);
 
