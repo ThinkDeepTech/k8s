@@ -89,6 +89,8 @@ class K8sClient {
         let target = null;
         for (const handle of handles) {
 
+            console.log(`Handle manifest:\n\n${handle.manifest.toString()}`)
+
             if (handle.manifest.metadata.name === name) {
 
                 console.info(`Target resource found:\n\n${handle.manifest.toString()}`);
@@ -134,6 +136,8 @@ class K8sClient {
         const api = k8sObjectHandle.api;
 
         const manifest = k8sObjectHandle.manifest;
+
+        console.log(`Deleting object with manifest:\n\n${manifest.toString()}`);
 
         return api.delete(manifest);
     }
