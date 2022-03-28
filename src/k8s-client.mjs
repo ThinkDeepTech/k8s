@@ -103,12 +103,18 @@ class K8sClient {
 
         const api = new K8sApi(this._apiVersion(kind));
 
-        const resourceList = await api.listAll(kind, namespace);
+        const {response} = await api.listAll(kind, namespace);
 
         console.log(`Resource list in getAll:\n\n${JSON.stringify(resourceList)}`);
 
+        const resourceList = response?.body?.items;
+
+        if (!resourceList) {
+            throw new Error(`Resource list was undefined. Response body: ${JSON.stringify(response?.body)}`);
+        }
+
         let targets = [];
-        for (const resource of resourceList.items) {
+        for (const resource of resourceList) {
 
             const manifest = new K8sManifest(resource);
 
