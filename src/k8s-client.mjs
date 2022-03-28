@@ -122,11 +122,13 @@ class K8sClient {
         console.log(`Received list manifest:\n\n${listManifest.toString()}`);
 
         let targets = [];
-        for (const resource of k8sObject.items) {
+        for (let resource of k8sObject.items) {
 
             resource.kind = capitalizeFirstLetter(kind);
 
             resource.apiVersion = apiVersion;
+
+            console.log(`Creating manifest from resource:\n\n${JSON.stringify(resource)}`);
 
             const manifest = new K8sManifest(resource);
 
