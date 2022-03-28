@@ -130,12 +130,12 @@ class K8sManifest {
 
         console.log(`Creating object of type: ${typeName}`);
 
-        let subject = null;
         if (typeName === 'object') {
-            subject = {};
-        } else {
-            subject = new k8s[typeName]();
+            console.log(`Value: ${JSON.stringify(value)}`)
+            return value;
         }
+
+        let subject = new k8s[typeName]();
 
         for (const attribute in value) {
 
