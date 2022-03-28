@@ -105,6 +105,8 @@ class K8sClient {
 
         const resourceList = await api.listAll(kind, namespace);
 
+        console.log(`Resource list in getAll:\n\n${JSON.stringify(resourceList)}`);
+
         let targets = [];
         for (const resource of resourceList.items) {
 
