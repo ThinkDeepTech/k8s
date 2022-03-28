@@ -2,7 +2,7 @@
   "name": "@thinkdeep/k8s",
   "version": "1.0.0",
   "description": "K8s node client tag for processing yaml configurations in javascript code.",
-  "main": "src/k8s-tag.mjs",
+  "main": "src/k8s-client.mjs",
   "repository": "git@github.com:ThinkDeepTech/k8s.git",
   "author": "haydenmcp <hayden.mcparlane@gmail.com>",
   "license": "GPL3.0",
