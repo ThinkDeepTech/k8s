@@ -1,0 +1,29 @@
+{
+  "name": "@thinkdeep/k8s",
+  "version": "1.0.0",
+  "description": "K8s node client tag for processing yaml configurations in javascript code.",
+  "main": "src/k8s-tag.mjs",
+  "repository": "git@github.com:ThinkDeepTech/k8s.git",
+  "author": "haydenmcp <hayden.mcparlane@gmail.com>",
+  "license": "GPL3.0",
+  "type": "module",
+  "scripts": {
+    "tests": "mocha ./test/**/*.test.mjs ./test/*.test.mjs"
+  },
+  "dependencies": {
+    "@kubernetes/client-node": "0.15",
+    "yaml": "^1.10.2"
+  },
+  "devDependencies": {
+    "chai": "^4.3.4",
+    "mocha": "^9.1.3",
+    "sinon": "^12.0.1"
+  },
+  "keywords": [
+    "Kubernetes",
+    "K8s",
+    "Node",
+    "JavaScript",
+    "Client"
+  ]
+}
