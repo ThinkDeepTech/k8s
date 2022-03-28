@@ -136,6 +136,7 @@ class K8sManifest {
 
             const targetTypeMap = this._attributeTypeMap(typeName, attribute);
 
+            console.log(`Handling attribute ${attribute} for type ${typeName} `);
             subject[attribute] = this._k8sClientObject(targetTypeMap.type, value[attribute]);
 
         }
