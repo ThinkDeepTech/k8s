@@ -5,21 +5,14 @@ import yaml from "yaml";
 class K8sManifest {
     constructor(configuration) {
 
-        if (configuration.constructor.name.includes('V')) {
+        this._yaml = configuration;
 
-            this._obj = configuration;
+        console.log(`Yaml configuration found. ${yaml.stringify(configuration)}`)
 
-            // TODO: remove console statements.
-            console.log(`K8s client object found. ${JSON.stringify(this.toString())}`);
-        } else {
+        const objectPrefix = this._objectVersion(this._yaml.apiVersion);
 
-            this._yaml = configuration;
-
-            console.log(`Yaml configuration found. ${yaml.stringify(configuration)}`)
-
-            const objectPrefix = this._objectVersion(this._yaml.apiVersion);
-            this._obj = this._k8sClientObject(`${objectPrefix}${this._yaml.kind}`, this._yaml);
-        }
+        console.log(`Creating object with prefix: ${objectPrefix}${this._yaml.kind}`);
+        this._obj = this._k8sClientObject(`${objectPrefix}${this._yaml.kind}`, this._yaml);
     }
 
     get apiVersion() {

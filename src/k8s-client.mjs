@@ -122,7 +122,7 @@ class K8sClient {
         console.log(`Received list manifest:\n\n${listManifest.toString()}`);
 
         let targets = [];
-        for (let resource of k8sObject.items) {
+        for (const resource of k8sObject.items) {
 
             resource.kind = capitalizeFirstLetter(kind);
 
