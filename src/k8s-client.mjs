@@ -86,17 +86,14 @@ class K8sClient {
 
         const handles = await this.getAll(kind, namespace);
 
-        console.log(`Handles: ${JSON.stringify(handles)}`);
-
         let target = null;
         for (const handle of handles) {
-
-            console.log(`Handle manifest:\n\n${handle.manifest.toString()}`)
 
             if (handle.manifest.metadata.name === name) {
 
                 console.info(`Target resource found:\n\n${handle.manifest.toString()}`);
                 target = handle;
+                break;
             }
         }
 
@@ -127,6 +124,8 @@ class K8sClient {
 
         let targets = [];
         for (const resource of k8sObject.items) {
+            resource.apiVersion = apiVersion;
+            resource.kind = capitalizeFirstLetter(kind);
             const manifest = new K8sManifest(resource);
             targets.push(new K8sObjectHandle(api, manifest));
         }
