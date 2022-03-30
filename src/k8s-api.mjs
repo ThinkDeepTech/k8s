@@ -2,26 +2,14 @@ import k8s from '@kubernetes/client-node';
 import { k8sKind } from './k8s-kind.mjs';
 import { k8sManifest, stringify } from './k8s-manifest.mjs';
 
-const apiVersionToApiClientConstructor = { };
+var apiVersionToApiClientConstructor = { };
 
 const initApiVersionToApiClientConstructorMap = (kubeConfig) => {
 
     let apiConstructor = (kubeConfig, api) => kubeConfig.makeApiClient(api);
-    for (const api of k8s.APIS) {
-
-        const apiClient = kubeConfig.makeApiClient(api);
-        const fetchResources = apiClient['getAPIResources'];
-        if (fetchResources) {
-
-            const {body} = fetchResources();
-
-            console.log(`API Group response body:\n\n${JSON.stringify(body)}`)
-
-            const resourceList = k8sManifest(body);
-
-            apiVersionToApiClientConstructor[resourceList.groupVersion.toLowerCase()] = apiConstructor.bind(kubeConfig, api);
-        }
-    }
+    forEachApiResourceList(kubeConfig, (resourceList) => {
+        apiVersionToApiClientConstructor[resourceList.groupVersion.toLowerCase()] = apiConstructor.bind(kubeConfig, api);
+    })
 
     console.log(`Api Map:\n\n${JSON.stringify(apiVersionToApiClientConstructor)}`);
 }
@@ -31,35 +19,40 @@ var kindToApiClientConstructors = {};
 const initKindToClientConstructorMap = (kubeConfig) => {
 
     let apiConstructor = (kubeConfig, api) => kubeConfig.makeApiClient(api);
+    forEachApiResourceList(kubeConfig, (resourceList) => {
+        for (const resource of resourceList.resources) {
+
+            const resourceName = resource.name.toLowerCase();
+            if (!kindToApiClientConstructors[resourceName]) {
+                kindToApiClientConstructors[resourceName] = [];
+            }
+
+            kindToApiClientConstructors[resourceName].push(apiConstructor.bind(kubeConfig, api));
+        }
+    });
+
+    console.log(`Kind Map:\n\n${JSON.stringify(kindToApiClientConstructors)}`);
+
+};
+
+const forEachApiResourceList = (kubeConfig, callback) => {
+
     for (const api of k8s.APIS) {
 
         const apiClient = kubeConfig.makeApiClient(api);
         const fetchResources = apiClient['getAPIResources'];
-        if (fetchResources) {
+        if (typeof fetchResources === 'function') {
 
             const response = fetchResources();
 
             console.log(`API Group response:\n\n${JSON.stringify(response)}`)
 
-            const body = response?.body;
+            const resourceList = response?.body;
 
-            const resourceList = k8sManifest(body);
-
-            for (const resource of resourceList.resources) {
-
-                const resourceName = resource.name.toLowerCase();
-                if (!kindToApiClientConstructors[resourceName]) {
-                    kindToApiClientConstructors[resourceName] = [];
-                }
-
-                kindToApiClientConstructors[resourceName].push(apiConstructor.bind(kubeConfig, api));
-            }
+            callback(k8sManifest(resourceList));
         }
     }
-
-    console.log(`Kind Map:\n\n${JSON.stringify(kindToApiClientConstructors)}`);
-
-};
+}
 
 class K8sApi {
     constructor(kubeConfig) {
