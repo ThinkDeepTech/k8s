@@ -37,9 +37,11 @@ const initKindToClientConstructorMap = (kubeConfig) => {
         const fetchResources = apiClient['getAPIResources'];
         if (fetchResources) {
 
-            const {body} = fetchResources();
+            const response = fetchResources();
 
-            console.log(`API Group response body:\n\n${JSON.stringify(body)}`)
+            console.log(`API Group response:\n\n${JSON.stringify(response)}`)
+
+            const body = response?.body;
 
             const resourceList = k8sManifest(body);
 

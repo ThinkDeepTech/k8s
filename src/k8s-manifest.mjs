@@ -6,7 +6,7 @@ import { mapKindToApiVersion } from "./map-kind-to-api-version.mjs";
 const k8sManifest = (configuration) => {
 
     let target = null;
-    if (configuration.constructor.name in k8s) {
+    if (!!configuration?.constructor?.name && (configuration.constructor.name in k8s)) {
 
         configuration.kind = k8sKind(configuration.constructor.name);
         configuration.apiVersion = mapKindToApiVersion(configuration.kind);
