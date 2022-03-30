@@ -51,17 +51,21 @@ class K8sClient {
 
         const api = new K8sApi(this._kubeConfig);
 
-        const {response: { body } } = await api.listAll(kind, namespace);
-
-        if (!body) {
-            throw new Error(`The body returned from the k8s node client was invalid. Response body: ${JSON.stringify(body)}`);
-        }
-
-        const listManifest = manifest(body);
+        const resources = await api.listAll(kind, namespace);
 
         let targets = [];
-        for (const resource of listManifest.items) {
-            targets.push(new K8sObjectHandle(api, manifest(resource)));
+        for (const resource of resources) {
+            const {response: { body } } = resource;
+
+            if (!body) {
+                throw new Error(`The body returned from the k8s node client was invalid. Response body: ${JSON.stringify(body)}`);
+            }
+
+            const listManifest = manifest(body);
+
+            for (const item of listManifest.items) {
+                targets.push(new K8sObjectHandle(api, manifest(item)));
+            }
         }
 
         return targets;
