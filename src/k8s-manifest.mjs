@@ -1,5 +1,6 @@
 import k8s from "@kubernetes/client-node";
 import { capitalizeFirstLetter } from "./capitalize-first-letter.mjs";
+import { mapKindToApiVersion } from "./map-kind-to-api-version.mjs";
 import yaml from "yaml";
 
 class K8sManifest {
@@ -7,6 +8,8 @@ class K8sManifest {
 
         if (configuration.constructor.name in k8s) {
 
+            configuration.kind = this._kind(configuration.constructor.name);
+            configuration.apiVersion = mapKindToApiVersion(configuration.kind);
             this._obj = configuration;
             console.log(`Initialized with k8s client object of type: ${configuration.constructor.name}`);
         } else {
@@ -15,9 +18,17 @@ class K8sManifest {
             console.log(`Yaml configuration found. ${yaml.stringify(configuration)}`);
 
             const objectPrefix = this._objectVersion(this._yaml.apiVersion);
+            const objectKind = this._kind(`${objectPrefix}${this._yaml.kind}`);
+            console.log(`Creating object with prefix: ${objectPrefix}${objectKind}`);
+            this._obj = this._k8sClientObject(`${objectPrefix}${objectKind}`, this._yaml);
+        }
 
-            console.log(`Creating object with prefix: ${objectPrefix}${this._yaml.kind}`);
-            this._obj = this._k8sClientObject(`${objectPrefix}${this._yaml.kind}`, this._yaml);
+        if (!this.apiVersion) {
+            throw new Error(`${this.apiVersion} wasn't recognized as a valid API version. Are you sure you spelled it correctly?`);
+        }
+
+        if (!this.kind) {
+            throw new Error(`${this.kind} wasn't recognized as a valid kind. Are you sure you spelled it correctly?`);
         }
     }
 
@@ -169,6 +180,41 @@ class K8sManifest {
 
     _emptyMap(map) {
         return Object.keys(map).length === 0;
+    }
+
+    _kind(prospectiveKind) {
+
+        let targetKind = "";
+        for (const registeredKind in k8s) {
+
+            if (registeredKind.toLowerCase() === prospectiveKind.toLowerCase()) {
+                targetKind = this._removeVersion(registeredKind);
+                break;
+            }
+        }
+
+        if (!targetKind) {
+            throw new Error(`The kind ${prospectiveKind} wasn't found in the k8s client library. Are you sure you supplied an accepted kind?`);
+        }
+
+        return targetKind;
+    }
+
+    _removeVersion(constructorName) {
+
+        console.log(`Constructor name: ${constructorName}`);
+
+        const matches = constructorName.match(/[A-Za-z]+(?!\d+)(?=[A-Za-z]*$)/);
+
+        if (!matches) {
+            return constructorName;
+        }
+
+        const versionlessConstructorName = matches[0];
+
+        console.log(`Versionless constructor name ${versionlessConstructorName} used for constructor ${constructorName}`);
+
+        return versionlessConstructorName;
     }
 }
 

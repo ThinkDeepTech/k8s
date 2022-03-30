@@ -1,9 +1,73 @@
-import chai from 'chai';
+import chai, { assert } from 'chai';
+import k8s from '@kubernetes/client-node';
 const expect = chai.expect;
 
 import {K8sManifest} from '../src/k8s-manifest.mjs';
 
 describe('k8s-manifest', () => {
+
+    describe.only('constructor', () => {
+
+        it('should correctly map k8s client objects when supplied as configurations', () => {
+            const configuration = new k8s.V1Pod();
+
+            const subject = new K8sManifest(configuration);
+
+            expect(subject.k8sClientObject().constructor.name).to.include('Pod');
+            expect(subject.kind).to.equal('Pod');
+        })
+
+        it('should correctly map beta k8s client objects when supplied as configurations', () => {
+            const configuration = new k8s.V1beta1ClusterRole();
+
+            const subject = new K8sManifest(configuration);
+
+            expect(subject.k8sClientObject().constructor.name).to.include('ClusterRole');
+            expect(subject.kind).to.equal('ClusterRole');
+        })
+
+        it('should correctly map alpha k8s client objects when supplied as configurations', () => {
+            const configuration = new k8s.V1alpha1ClusterRole();
+
+            const subject = new K8sManifest(configuration);
+
+            expect(subject.k8sClientObject().constructor.name).to.include('ClusterRole');
+            expect(subject.kind).to.equal('ClusterRole');
+        })
+
+        it('should correctly map yaml objects when supplied as configuration', () => {
+            const configuration = {
+                apiVersion: 'v1',
+                kind: 'Pod',
+                metadata: {
+                    name: 'sample-pod'
+                }
+            };
+
+            const subject = new K8sManifest(configuration);
+
+            expect(subject.k8sClientObject().constructor.name).to.include('Pod');
+        })
+
+        it('should throw an error if a recognized kind is not supplied', () => {
+            const configuration = {
+                apiVersion: 'v1',
+                kind: 'UnrecognizedKind',
+                metadata: {
+                    name: 'sample-pod'
+                }
+            };
+
+            try {
+                new K8sManifest(configuration);
+                assert.fail('An error should have been thrown but was not.');
+            } catch (e) {
+                expect(e.message.toString()).to.include(`The kind`);
+                expect(e.message.toString()).to.include(`wasn't found in the k8s client library. Are you sure you supplied an accepted kind?`);
+            }
+        })
+
+    })
 
     describe('container mapping', () => {
         let parsedYaml;

@@ -5,7 +5,7 @@
   "main": "src/k8s-client.mjs",
   "repository": "git@github.com:ThinkDeepTech/k8s.git",
   "author": "haydenmcp <hayden.mcparlane@gmail.com>",
-  "license": "GPL3.0",
+  "license": "AGPL-3.0-only",
   "type": "module",
   "scripts": {
     "tests": "mocha ./test/**/*.test.mjs ./test/*.test.mjs"
