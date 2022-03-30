@@ -4,11 +4,11 @@ import { k8sManifest, stringify } from './k8s-manifest.mjs';
 
 var apiVersionToApiClientConstructor = { };
 
-const initApiVersionToApiClientConstructorMap = (kubeConfig) => {
+const initApiVersionToApiClientConstructorMap = async (kubeConfig) => {
 
     const apiConstructor = (kubeConfig, api) => kubeConfig.makeApiClient(api);
 
-    forEachApiResourceList(kubeConfig, (resourceList) => {
+    await forEachApiResourceList(kubeConfig, (resourceList) => {
         apiVersionToApiClientConstructor[resourceList.groupVersion.toLowerCase()] = apiConstructor.bind(kubeConfig, api);
     })
 
@@ -17,10 +17,10 @@ const initApiVersionToApiClientConstructorMap = (kubeConfig) => {
 
 var kindToApiClientConstructors = {};
 
-const initKindToClientConstructorMap = (kubeConfig) => {
+const initKindToClientConstructorMap = async (kubeConfig) => {
 
     const apiConstructor = (kubeConfig, api) => kubeConfig.makeApiClient(api);
-    forEachApiResourceList(kubeConfig, (resourceList) => {
+    await forEachApiResourceList(kubeConfig, (resourceList) => {
         for (const resource of resourceList.resources) {
 
             const resourceName = resource.name.toLowerCase();
@@ -36,19 +36,15 @@ const initKindToClientConstructorMap = (kubeConfig) => {
 
 };
 
-const forEachApiResourceList = (kubeConfig, callback) => {
+const forEachApiResourceList = async (kubeConfig, callback) => {
 
     for (const api of k8s.APIS) {
-
-        console.log(`Api Value: \n\n${JSON.stringify(api)}`);
-
-        console.log(`Concrete Api Value: \n\n${JSON.stringify(k8s.CoreV1Api)}`);
 
         const apiClient = kubeConfig.makeApiClient(api);
         const fetchResources = apiClient['getAPIResources'];
         if (typeof fetchResources === 'function') {
 
-            const response = fetchResources();
+            const response = await fetchResources();
 
             console.log(`API Group response:\n\n${JSON.stringify(response)}`)
 
@@ -60,21 +56,23 @@ const forEachApiResourceList = (kubeConfig, callback) => {
 }
 
 class K8sApi {
+
     constructor(kubeConfig) {
+        this._kubeConfig = kubeConfig;
+    }
 
-        // kubeConfig.makeApiClient(k8s.CoreV1Api).getAPIResources().then(async (response) => {
-        //     console.log(`Dummy API Resource Fetch: ${JSON.stringify(response)}`);
-        // })
-
+    async init() {
         if (Object.keys(apiVersionToApiClientConstructor).length === 0) {
             console.log(`Initializing api to client constructor map.`)
-            initApiVersionToApiClientConstructorMap(kubeConfig);
+            await initApiVersionToApiClientConstructorMap(this._kubeConfig);
         }
 
         if (Object.keys(kindToApiClientConstructors).length === 0) {
             console.log(`Initializing kind to client constructors map.`)
-            initKindToClientConstructorMap(kubeConfig);
+            await initKindToClientConstructorMap(this._kubeConfig);
         }
+
+        return this;
     }
 
     async create(manifest) {
