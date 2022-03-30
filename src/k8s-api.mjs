@@ -40,12 +40,14 @@ const forEachApiResourceList = async (kubeConfig, callback) => {
 
     for (const api of k8s.APIS) {
 
-        console.log(`API Value:\n\n${api}`);
-
-        console.log(`Event v1 Value:\n\n${k8s.EventsV1Api}`);
-
         const apiClient = kubeConfig.makeApiClient(api);
+
+        console.log(`Made API client\n\n${apiClient}`);
         const fetchResources = apiClient['getAPIResources'];
+
+        console.log(`Fetch resources:\n\n${fetchResources}`);
+
+        console.log(`Type of Fetch Resources:\n\n${typeof fetchResources}`);
         if (typeof fetchResources === 'function') {
 
             const response = await fetchResources();
