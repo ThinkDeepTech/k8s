@@ -1,5 +1,5 @@
 import {K8sApi} from './k8s-api.mjs';
-import {K8sManifest} from './manifest.mjs';
+import {manifest, stringify} from './manifest.mjs';
 import {K8sObjectHandle} from './k8s-object-handle.mjs';
 import { mapKindToApiVersion } from './map-kind-to-api-version.mjs';
 import yaml from "yaml";
@@ -10,7 +10,7 @@ class K8sClient {
 
         const parsedYaml = yaml.parse(yamlString);
 
-        const manifest = new K8sManifest(parsedYaml);
+        const manifest = manifest(parsedYaml);
 
         const api = new K8sApi(manifest.apiVersion);
 
@@ -32,7 +32,7 @@ class K8sClient {
 
             if (handle.manifest.metadata.name === name) {
 
-                console.info(`Target resource found:\n\n${handle.manifest.toString()}`);
+                console.info(`Target resource found:\n\n${stringify(handle.manifest)}`);
                 target = handle;
                 break;
             }
@@ -45,26 +45,17 @@ class K8sClient {
 
         const api = new K8sApi(mapKindToApiVersion(kind));
 
-        const {response} = await api.listAll(kind, namespace);
-
-        console.log(`Resource list in getAll:\n\n${JSON.stringify(response)}`);
-
-        const body = response?.body;
+        const {response: { body } } = await api.listAll(kind, namespace);
 
         if (!body) {
             throw new Error(`The body returned from the k8s node client was invalid. Response body: ${JSON.stringify(body)}`);
         }
 
-        const listManifest = new K8sManifest(body);
-
-        const k8sObject = listManifest.k8sClientObject();
-
-        console.log(`Received list manifest:\n\n${listManifest.toString()}`);
+        const listManifest = manifest(body);
 
         let targets = [];
-        for (const resource of k8sObject.items) {
-            const manifest = new K8sManifest(resource);
-            targets.push(new K8sObjectHandle(api, manifest));
+        for (const resource of listManifest.items) {
+            targets.push(new K8sObjectHandle(api, manifest(resource)));
         }
 
         return targets;
@@ -75,8 +66,6 @@ class K8sClient {
         const api = k8sObjectHandle.api;
 
         const manifest = k8sObjectHandle.manifest;
-
-        console.log(`Deleting object with manifest:\n\n${manifest.toString()}`);
 
         return api.delete(manifest);
     }

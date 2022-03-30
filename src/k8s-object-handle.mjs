@@ -1,3 +1,5 @@
+import {stringify} from './manifest.mjs';
+
 class K8sObjectHandle {
     constructor(api, manifest) {
         this._api = api;
@@ -13,7 +15,7 @@ class K8sObjectHandle {
     }
 
     toString() {
-        return this.manifest.toString();
+        return stringify(this.manifest);
     }
 }
 

@@ -1,5 +1,6 @@
 import k8s from '@kubernetes/client-node';
 import {capitalizeFirstLetter} from './capitalize-first-letter.mjs';
+import { stringify } from './manifest.mjs';
 
 const apiVersionToClientMap = {
     "admissionregistration.k8s.io/v1": (kubeConfig) => kubeConfig.makeApiClient(k8s.AdmissionregistrationV1Api),
@@ -53,7 +54,7 @@ class K8sApi {
     }
 
     async create(manifest) {
-        console.log(`Creating k8s object:\n\n${manifest.toString()}`);
+        console.log(`Creating k8s object:\n\n${stringify(manifest)}`);
         return this._creationStrategy(manifest)();
     }
 
@@ -63,7 +64,7 @@ class K8sApi {
     }
 
     async delete(manifest) {
-        console.log(`Deleting k8s object:\n\n${manifest.toString()}`);
+        console.log(`Deleting k8s object:\n\n${stringify(manifest)}`);
         return this._deletionStrategy(manifest)();
     }
 
@@ -92,10 +93,10 @@ class K8sApi {
         const kind = capitalizeFirstLetter(manifest.kind);
         if (this._api[`createNamespaced${kind}`]) {
 
-            return this._api[`createNamespaced${kind}`].bind(this._api, manifest.metadata.namespace, manifest.k8sClientObject());
+            return this._api[`createNamespaced${kind}`].bind(this._api, manifest.metadata.namespace, manifest);
         } else if (this._api[`create${kind}`]) {
 
-            return this._api[`create${kind}`].bind(this._api, manifest.k8sClientObject());
+            return this._api[`create${kind}`].bind(this._api, manifest);
         } else {
             throw new Error(`
                 The creation function for kind ${kind} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.

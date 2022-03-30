@@ -1,5 +1,6 @@
 import k8s from "@kubernetes/client-node";
 import { capitalizeFirstLetter } from "./capitalize-first-letter.mjs";
+import { kind } from "./kind.mjs";
 import { mapKindToApiVersion } from "./map-kind-to-api-version.mjs";
 import yaml from "yaml";
 
@@ -11,14 +12,10 @@ const manifest = (configuration) => {
         configuration.kind = kind(configuration.constructor.name);
         configuration.apiVersion = mapKindToApiVersion(configuration.kind);
         target = configuration;
-        console.log(`Initialized with k8s client object of type: ${configuration.constructor.name}`);
     } else {
 
-        console.log(`Yaml configuration found. ${yaml.stringify(configuration)}`);
-
         const objectPrefix = objectVersion(configuration.apiVersion);
-        const objectKind = kind(`${objectPrefix}${configuration.kind}`);
-        console.log(`Creating object with prefix: ${objectPrefix}${objectKind}`);
+        const objectKind = kind(configuration.kind);
         target = k8sClientObject(`${objectPrefix}${objectKind}`, configuration);
     }
 
@@ -33,7 +30,7 @@ const manifest = (configuration) => {
     return target;
 };
 
-const toString = () => {
+const stringify = () => {
     return k8s.dumpYaml(this._obj);
 }
 
@@ -130,10 +127,7 @@ const handleMap = (typeName, value) => {
 
 const handleClientObjectType = (typeName, value) => {
 
-    console.log(`Creating object of type: ${typeName}`);
-
     if (typeName === 'object') {
-        console.log(`Value: ${JSON.stringify(value)}`)
         return value;
     }
 
@@ -143,7 +137,6 @@ const handleClientObjectType = (typeName, value) => {
 
         const targetTypeMap = attributeTypeMap(typeName, attribute);
 
-        console.log(`Handling attribute ${attribute} for type ${typeName} `)
         subject[attribute] = k8sClientObject(targetTypeMap.type, value[attribute]);
 
     }
@@ -167,39 +160,4 @@ const emptyMap = (map) => {
     return Object.keys(map).length === 0;
 }
 
-const kind = (prospectiveKind) => {
-
-    let targetKind = "";
-    for (const registeredKind in k8s) {
-
-        if (registeredKind.toLowerCase() === prospectiveKind.toLowerCase()) {
-            targetKind = removeVersion(registeredKind);
-            break;
-        }
-    }
-
-    if (!targetKind) {
-        throw new Error(`The kind ${prospectiveKind} wasn't found in the k8s client library. Are you sure you supplied an accepted kind?`);
-    }
-
-    return targetKind;
-}
-
-const removeVersion = (constructorName) => {
-
-    console.log(`Constructor name: ${constructorName}`);
-
-    const matches = constructorName.match(/[A-Za-z]+(?!\d+)(?=[A-Za-z]*$)/);
-
-    if (!matches) {
-        return constructorName;
-    }
-
-    const versionlessConstructorName = matches[0];
-
-    console.log(`Versionless constructor name ${versionlessConstructorName} used for constructor ${constructorName}`);
-
-    return versionlessConstructorName;
-}
-
-export { manifest };
+export { manifest, stringify };
