@@ -1,21 +1,20 @@
 import k8s from "@kubernetes/client-node";
 import { capitalizeFirstLetter } from "./capitalize-first-letter.mjs";
-import { kind } from "./kind.mjs";
+import { k8sKind } from "./k8s-kind.mjs";
 import { mapKindToApiVersion } from "./map-kind-to-api-version.mjs";
-import yaml from "yaml";
 
 const manifest = (configuration) => {
 
     let target = null;
     if (configuration.constructor.name in k8s) {
 
-        configuration.kind = kind(configuration.constructor.name);
+        configuration.kind = k8sKind(configuration.constructor.name);
         configuration.apiVersion = mapKindToApiVersion(configuration.kind);
         target = configuration;
     } else {
 
         const objectPrefix = objectVersion(configuration.apiVersion);
-        const objectKind = kind(configuration.kind);
+        const objectKind = k8sKind(configuration.kind);
         target = k8sClientObject(`${objectPrefix}${objectKind}`, configuration);
     }
 

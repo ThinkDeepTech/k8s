@@ -1,10 +1,16 @@
+import k8s from '@kubernetes/client-node';
 import {K8sApi} from './k8s-api.mjs';
-import {manifest, stringify} from './manifest.mjs';
 import {K8sObjectHandle} from './k8s-object-handle.mjs';
+import {manifest, stringify} from './manifest.mjs';
 import { mapKindToApiVersion } from './map-kind-to-api-version.mjs';
 import yaml from "yaml";
 
 class K8sClient {
+
+    constructor() {
+        this._kubeConfig = new k8s.KubeConfig();
+        this._kubeConfig.loadFromCluster();
+    }
 
     async create (yamlString) {
 
@@ -12,15 +18,15 @@ class K8sClient {
 
         const manifest = manifest(parsedYaml);
 
-        const api = new K8sApi(manifest.apiVersion);
+        const api = new K8sApi(this._kubeConfig);
 
         await api.create(manifest);
 
         return new K8sObjectHandle(api, manifest);
     }
 
-    async edit() {
-        // TODO
+    async apply() {
+
     }
 
     async get(kind, name, namespace) {
@@ -43,7 +49,7 @@ class K8sClient {
 
     async getAll(kind, namespace) {
 
-        const api = new K8sApi(mapKindToApiVersion(kind));
+        const api = new K8sApi(this._kubeConfig);
 
         const {response: { body } } = await api.listAll(kind, namespace);
 

@@ -11,7 +11,7 @@ const initKindMap = () => {
     }
 }
 
-const kind = (prospectiveKind) => {
+const k8sKind = (prospectiveKind) => {
 
     if (Object.keys(kindStringToManifestKindMap).length === 0) {
         initKindMap();
@@ -36,11 +36,7 @@ const removeVersion = (constructorName) => {
         return constructorName;
     }
 
-    const versionlessConstructorName = matches[0];
-
-    // console.log(`Versionless constructor name ${versionlessConstructorName} used for constructor ${constructorName}`);
-
-    return versionlessConstructorName;
+    return matches[0];
 }
 
-export { kind };
+export { k8sKind };

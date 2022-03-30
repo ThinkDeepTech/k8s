@@ -1,56 +1,76 @@
 import k8s from '@kubernetes/client-node';
-import {capitalizeFirstLetter} from './capitalize-first-letter.mjs';
-import { stringify } from './manifest.mjs';
+import { k8sKind } from './k8s-kind.mjs';
+import { manifest, stringify } from './manifest.mjs';
 
-const apiVersionToClientMap = {
-    "admissionregistration.k8s.io/v1": (kubeConfig) => kubeConfig.makeApiClient(k8s.AdmissionregistrationV1Api),
-    "admissionregistration.k8s.io/v1beta1": (kubeConfig) => kubeConfig.makeApiClient(k8s.AdmissionregistrationV1beta1Api),
-    "apiregistration.k8s.io/v1": (kubeConfig) => kubeConfig.makeApiClient(k8s.ApiregistrationV1Api),
-    "apiregistration.k8s.io/v1beta1": (kubeConfig) => kubeConfig.makeApiClient(k8s.ApiregistrationV1beta1Api),
-    "apps/v1": (kubeConfig) => kubeConfig.makeApiClient(k8s.AppsV1Api),
-    "apiextensions.k8s.io/v1": (kubeConfig) => kubeConfig.makeApiClient(k8s.ApiextensionsV1Api),
-    "apiextensions.k8s.io/v1beta1": (kubeConfig) => kubeConfig.makeApiClient(k8s.ApiextensionsV1beta1Api),
-    "authentication.k8s.io/v1": (kubeConfig) => kubeConfig.makeApiClient(k8s.AuthenticationV1Api),
-    "authentication.k8s.io/v1beta1": (kubeConfig) => kubeConfig.makeApiClient(k8s.AuthenticationV1beta1Api),
-    "autoscaling/v1": (kubeConfig) => kubeConfig.makeApiClient(k8s.AutoscalingV1Api),
-    "autoscaling/v1beta1": (kubeConfig) => kubeConfig.makeApiClient(k8s.AutoscalingV2beta1Api),
-    "autoscaling/v1beta2": (kubeConfig) => kubeConfig.makeApiClient(k8s.AutoscalingV2beta2Api),
-    "batch/v1": (kubeConfig) => kubeConfig.makeApiClient(k8s.BatchV1Api),
-    "batch/v1beta1": (kubeConfig) => kubeConfig.makeApiClient(k8s.BatchV1beta1Api),
-    "certificates.k8s.io/v1": (kubeConfig) => kubeConfig.makeApiClient(k8s.CertificatesV1Api),
-    "certificates.k8s.io/v1beta1": (kubeConfig) => kubeConfig.makeApiClient(k8s.CertificatesV1beta1Api),
-    "coordination.k8s.io/v1": (kubeConfig) => kubeConfig.makeApiClient(k8s.CoordinationV1Api),
-    "coordination.k8s.io/v1beta1": (kubeConfig) => kubeConfig.makeApiClient(k8s.CoordinationV1beta1Api),
-    "discovery.k8s.io/v1": (kubeConfig) => kubeConfig.makeApiClient(k8s.DiscoveryV1Api),
-    "extensions/v1beta1": (kubeConfig) => kubeConfig.makeApiClient(k8s.ExtensionsV1beta1Api),
-    "events.k8s.io/v1": (kubeConfig) => kubeConfig.makeApiClient(k8s.EventsV1Api),
-    "events.k8s.io/v1beta1": (kubeConfig) => kubeConfig.makeApiClient(k8s.EventsV1beta1Api),
-    "flowcontrol.apiserver.k8s.io/v1beta1": (kubeConfig) => kubeConfig.makeApiClient(k8s.FlowcontrolApiserverV1beta1Api),
-    "networking.k8s.io/v1": (kubeConfig) => kubeConfig.makeApiClient(k8s.NetworkingV1Api),
-    "node.k8s.io/v1": (kubeConfig) => kubeConfig.makeApiClient(k8s.NodeV1Api),
-    "node.k8s.io/v1alpha1": (kubeConfig) => kubeConfig.makeApiClient(k8s.NodeV1alpha1Api),
-    "node.k8s.io/v1beta1": (kubeConfig) => kubeConfig.makeApiClient(k8s.NodeV1beta1Api),
-    "policy/v1": (kubeConfig) => kubeConfig.makeApiClient(k8s.PolicyV1Api),
-    "policy/v1beta1": (kubeConfig) => kubeConfig.makeApiClient(k8s.PolicyV1beta1Api),
-    "rbac.authorization.k8s.io/v1": (kubeConfig) => kubeConfig.makeApiClient(k8s.RbacAuthorizationV1Api),
-    "rbac.authorization.k8s.io/v1alpha1": (kubeConfig) => kubeConfig.makeApiClient(k8s.RbacAuthorizationV1alpha1Api),
-    "rbac.authorization.k8s.io/v1beta1": (kubeConfig) => kubeConfig.makeApiClient(k8s.RbacAuthorizationV1beta1Api),
-    "scheduling.k8s.io/v1": (kubeConfig) => kubeConfig.makeApiClient(k8s.SchedulingV1Api),
-    "scheduling.k8s.io/v1alpha1": (kubeConfig) => kubeConfig.makeApiClient(k8s.SchedulingV1alpha1Api),
-    "scheduling.k8s.io/v1beta1": (kubeConfig) => kubeConfig.makeApiClient(k8s.SchedulingV1beta1Api),
-    "storage.k8s.io/v1": (kubeConfig) => kubeConfig.makeApiClient(k8s.StorageV1Api),
-    "storage.k8s.io/v1alpha1": (kubeConfig) => kubeConfig.makeApiClient(k8s.StorageV1alpha1Api),
-    "storage.k8s.io/v1beta1": (kubeConfig) => kubeConfig.makeApiClient(k8s.StorageV1beta1Api),
-    "v1": (kubeConfig) => kubeConfig.makeApiClient(k8s.CoreV1Api)
+const apiVersionToApiClientConstructor = { };
+
+const initApiVersionToApiClientConstructorMap = (kubeConfig) => {
+
+    let apiConstructor = (kubeConfig, api) => kubeConfig.makeApiClient(api);
+    for (const api of k8s.APIS) {
+
+        const apiClient = kubeConfig.makeApiClient(api);
+        const fetchResources = apiClient['getAPIResources'];
+        if (fetchResources) {
+
+            const {response: {body}} = fetchResources();
+
+            console.log(`API Group response body:\n\n${JSON.stringify(body)}`)
+
+            const resourceList = manifest(body);
+
+            apiVersionToApiClientConstructor[resourceList.groupVersion.toLowerCase()] = apiConstructor.bind(kubeConfig, api);
+        }
+    }
+
+    console.log(`Api Map:\n\n${JSON.stringify(apiVersionToApiClientConstructor)}`);
+}
+
+var kindToApiClientConstructors = {};
+
+const initKindToClientConstructorMap = (kubeConfig) => {
+
+    let apiConstructor = (kubeConfig, api) => kubeConfig.makeApiClient(api);
+    for (const api of k8s.APIS) {
+
+        const apiClient = kubeConfig.makeApiClient(api);
+        const fetchResources = apiClient['getAPIResources'];
+        if (fetchResources) {
+
+            const {response: {body}} = fetchResources();
+
+            console.log(`API Group response body:\n\n${JSON.stringify(body)}`)
+
+            const resourceList = manifest(body);
+
+            for (const resource of resourceList.resources) {
+
+                const resourceName = resource.name.toLowerCase();
+                if (!kindToApiClientConstructors[resourceName]) {
+                    kindToApiClientConstructors[resourceName] = [];
+                }
+
+                kindToApiClientConstructors[resourceName].push(apiConstructor.bind(kubeConfig, api));
+            }
+        }
+    }
+
+    console.log(`Kind Map:\n\n${JSON.stringify(kindToApiClientConstructors)}`);
+
 };
 
 class K8sApi {
-    constructor(apiVersion) {
+    constructor(kubeConfig) {
 
-        this._kubeConfig = new k8s.KubeConfig();
-        this._kubeConfig.loadFromCluster();
+        if (Object.keys(apiVersionToApiClientConstructor).length === 0) {
+            console.log(`Initializing api to client constructor map.`)
+            initApiVersionToApiClientConstructorMap(kubeConfig);
+        }
 
-        this._api = this._clientApi(apiVersion, apiVersionToClientMap);
+        if (Object.keys(kindToApiClientConstructors).length === 0) {
+            console.log(`Initializing kind to client constructors map.`)
+            initKindToClientConstructorMap(kubeConfig);
+        }
     }
 
     async create(manifest) {
@@ -70,33 +90,45 @@ class K8sApi {
 
     _listAllStrategy(kind, namespace) {
 
-        const capitalizedKind = capitalizeFirstLetter(kind);
+        const kind = k8sKind(kind.toLowerCase());
+        const apis = this._clientApis(kind);
+        const fetchAllData = async (listOperations) => listOperations.map((listOperation) => listOperation());
 
-        if (!namespace && this._api[`list${capitalizedKind}ForAllNamespaces`]) {
+        let listOperations = [];
+        for (const api of apis) {
 
-            return this._api[`list${capitalizedKind}ForAllNamespaces`].bind(this._api);
-        } else if (this._api[`listNamespaced${capitalizedKind}`] && !!namespace) {
+            let listOperation = null;
+            if (!namespace && api[`list${kind}ForAllNamespaces`]) {
 
-            return this._api[`listNamespaced${capitalizedKind}`].bind(this._api, namespace);
-        } else {
+                listOperation = api[`list${kind}ForAllNamespaces`].bind(api);
+            } else if (api[`listNamespaced${kind}`] && !!namespace) {
 
-            const namespaceText = namespace ? `and namespace ${namespace}` : ``;
+                listOperation = api[`listNamespaced${kind}`].bind(api, namespace);
+            } else {
 
-            throw new Error(`
-                The list all function for kind ${capitalizedKind} ${namespaceText} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
-            `)
+                const namespaceText = namespace ? `and namespace ${namespace}` : ``;
+
+                throw new Error(`
+                    The list all function for kind ${kind} ${namespaceText} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
+                `)
+            }
+
+            listOperations.push(listOperation);
         }
+
+        return fetchAllData.bind(listOperations);
     }
 
     _creationStrategy(manifest) {
 
-        const kind = capitalizeFirstLetter(manifest.kind);
-        if (this._api[`createNamespaced${kind}`]) {
+        const kind = k8sKind(kind.toLowerCase());
+        const api = this._clientApi(manifest.apiVersion);
+        if (api[`createNamespaced${kind}`]) {
 
-            return this._api[`createNamespaced${kind}`].bind(this._api, manifest.metadata.namespace, manifest);
-        } else if (this._api[`create${kind}`]) {
+            return api[`createNamespaced${kind}`].bind(api, manifest.metadata.namespace, manifest);
+        } else if (api[`create${kind}`]) {
 
-            return this._api[`create${kind}`].bind(this._api, manifest);
+            return api[`create${kind}`].bind(api, manifest);
         } else {
             throw new Error(`
                 The creation function for kind ${kind} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
@@ -106,13 +138,14 @@ class K8sApi {
 
     _deletionStrategy(manifest) {
 
-        const kind = capitalizeFirstLetter(manifest.kind);
-        if (this._api[`deleteNamespaced${kind}`]) {
+        const kind = k8sKind(kind.toLowerCase());
+        const api = this._clientApi(manifest.apiVersion);
+        if (api[`deleteNamespaced${kind}`]) {
 
-            return this._api[`deleteNamespaced${kind}`].bind(this._api, manifest.metadata.name, manifest.metadata.namespace);
-        } else if (this._api[`delete${kind}`]) {
+            return api[`deleteNamespaced${kind}`].bind(api, manifest.metadata.name, manifest.metadata.namespace);
+        } else if (api[`delete${kind}`]) {
 
-            return this._api[`delete${kind}`].bind(this._api, manifest.metadata.name);
+            return api[`delete${kind}`].bind(api, manifest.metadata.name);
         } else {
             throw new Error(`
                 The deletion function for kind ${kind} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
@@ -120,9 +153,20 @@ class K8sApi {
         }
     }
 
-    _clientApi(apiVersion, apiVersionMap) {
+    _clientApis(kind) {
 
-        const constructApi = apiVersionMap[apiVersion];
+        const constructApis = (kubeConfig) => kindToApiClients[kind.toLowerCase()].map((constructApi) => constructApi(kubeConfig));
+
+        if (!constructApi) {
+            throw new Error(`The k8s apiVersion not yet supported. Received: ${apiVersion}`);
+        }
+
+        return constructApis(this._kubeConfig);
+    }
+
+    _clientApi(apiVersion) {
+
+        const constructApi = apiVersionToApiClientConstructor[apiVersion.toLowerCase()];
 
         if (!constructApi) {
             throw new Error(`The k8s apiVersion not yet supported. Received: ${apiVersion}`);
