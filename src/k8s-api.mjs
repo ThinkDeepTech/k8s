@@ -42,15 +42,9 @@ const forEachApiResourceList = async (kubeConfig, callback) => {
 
         const apiClient = kubeConfig.makeApiClient(api);
 
-        console.log(`Made API client\n\n${apiClient}`);
-        const fetchResources = apiClient['getAPIResources'];
+        const fetchResources = apiClient['getAPIResources'].bind(apiClient);
 
-        console.log(`Fetch resources:\n\n${fetchResources}`);
-
-        console.log(`Type of Fetch Resources:\n\n${typeof fetchResources}`);
         if (typeof fetchResources === 'function') {
-
-            console.log(`Getting ready to fetch resources...`);
 
             const response = await fetchResources();
 
@@ -76,10 +70,6 @@ class K8sApi {
         dummy.loadFromCluster();
 
         const api = dummy.makeApiClient(k8s.EventsV1Api);
-
-        api.getAPIResources().then((response) => {
-            console.log(`Response in dummy:\n\n${JSON.stringify(response)}`);
-        })
 
         if (Object.keys(apiVersionToApiClientConstructor).length === 0) {
             console.log(`Initializing api to client constructor map.`)
