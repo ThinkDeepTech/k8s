@@ -40,6 +40,10 @@ const forEachApiResourceList = async (kubeConfig, callback) => {
 
     for (const api of k8s.APIS) {
 
+        console.log(`API Value:\n\n${JSON.stringify(api)}`);
+
+        console.log(`Event v1 Value:\n\n${JSON.stringify(k8s.EventsV1Api)}`);
+
         const apiClient = kubeConfig.makeApiClient(api);
         const fetchResources = apiClient['getAPIResources'];
         if (typeof fetchResources === 'function') {
@@ -62,6 +66,15 @@ class K8sApi {
     }
 
     async init() {
+
+        const dummy = new k8s.KubeConfig();
+
+        const api = dummy.makeApiClient(k8s.EventsV1Api);
+
+        api.getAPIResources().then((response) => {
+
+        })
+
         if (Object.keys(apiVersionToApiClientConstructor).length === 0) {
             console.log(`Initializing api to client constructor map.`)
             await initApiVersionToApiClientConstructorMap(this._kubeConfig);
