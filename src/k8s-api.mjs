@@ -1,6 +1,6 @@
 import k8s from '@kubernetes/client-node';
 import { k8sKind } from './k8s-kind.mjs';
-import { manifest, stringify } from './manifest.mjs';
+import { k8sManifest, stringify } from './k8s-manifest.mjs';
 
 const apiVersionToApiClientConstructor = { };
 
@@ -13,11 +13,11 @@ const initApiVersionToApiClientConstructorMap = (kubeConfig) => {
         const fetchResources = apiClient['getAPIResources'];
         if (fetchResources) {
 
-            const {response: {body}} = fetchResources();
+            const {body} = fetchResources();
 
             console.log(`API Group response body:\n\n${JSON.stringify(body)}`)
 
-            const resourceList = manifest(body);
+            const resourceList = k8sManifest(body);
 
             apiVersionToApiClientConstructor[resourceList.groupVersion.toLowerCase()] = apiConstructor.bind(kubeConfig, api);
         }
@@ -37,11 +37,11 @@ const initKindToClientConstructorMap = (kubeConfig) => {
         const fetchResources = apiClient['getAPIResources'];
         if (fetchResources) {
 
-            const {response: {body}} = fetchResources();
+            const {body} = fetchResources();
 
             console.log(`API Group response body:\n\n${JSON.stringify(body)}`)
 
-            const resourceList = manifest(body);
+            const resourceList = k8sManifest(body);
 
             for (const resource of resourceList.resources) {
 

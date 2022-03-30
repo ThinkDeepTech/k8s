@@ -3,7 +3,7 @@ import { capitalizeFirstLetter } from "./capitalize-first-letter.mjs";
 import { k8sKind } from "./k8s-kind.mjs";
 import { mapKindToApiVersion } from "./map-kind-to-api-version.mjs";
 
-const manifest = (configuration) => {
+const k8sManifest = (configuration) => {
 
     let target = null;
     if (configuration.constructor.name in k8s) {
@@ -159,4 +159,4 @@ const emptyMap = (map) => {
     return Object.keys(map).length === 0;
 }
 
-export { manifest, stringify };
+export { k8sManifest, stringify };

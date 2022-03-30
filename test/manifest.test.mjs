@@ -2,7 +2,7 @@ import chai, { assert } from 'chai';
 import k8s from '@kubernetes/client-node';
 const expect = chai.expect;
 
-import {manifest} from '../src/manifest.mjs';
+import {k8sManifest} from '../src/k8s-manifest.mjs';
 
 describe('k8s-manifest', () => {
 
@@ -11,7 +11,7 @@ describe('k8s-manifest', () => {
         it('should correctly map k8s client objects when supplied as configurations', () => {
             const configuration = new k8s.V1Pod();
 
-            const subject = manifest(configuration);
+            const subject = k8sManifest(configuration);
 
             expect(subject.constructor.name).to.include('Pod');
             expect(subject.kind).to.equal('Pod');
@@ -20,7 +20,7 @@ describe('k8s-manifest', () => {
         it('should correctly map beta k8s client objects when supplied as configurations', () => {
             const configuration = new k8s.V1beta1ClusterRole();
 
-            const subject = manifest(configuration);
+            const subject = k8sManifest(configuration);
 
             expect(subject.constructor.name).to.include('ClusterRole');
             expect(subject.kind).to.equal('ClusterRole');
@@ -29,7 +29,7 @@ describe('k8s-manifest', () => {
         it('should correctly map alpha k8s client objects when supplied as configurations', () => {
             const configuration = new k8s.V1alpha1ClusterRole();
 
-            const subject = manifest(configuration);
+            const subject = k8sManifest(configuration);
 
             expect(subject.constructor.name).to.include('ClusterRole');
             expect(subject.kind).to.equal('ClusterRole');
@@ -44,7 +44,7 @@ describe('k8s-manifest', () => {
                 }
             };
 
-            const subject = manifest(configuration);
+            const subject = k8sManifest(configuration);
 
             expect(subject.constructor.name).to.include('Pod');
         })
@@ -59,7 +59,7 @@ describe('k8s-manifest', () => {
             };
 
             try {
-                manifest(configuration);
+                k8sManifest(configuration);
                 assert.fail('An error should have been thrown but was not.');
             } catch (e) {
                 expect(e.message.toString()).to.include(`The kind`);
@@ -152,7 +152,7 @@ describe('k8s-manifest', () => {
         });
 
         it('should create a container array of k8s client containers', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -161,7 +161,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map name', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -169,7 +169,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map image', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -177,7 +177,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map startup probe', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -188,7 +188,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map liveness probe', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -199,7 +199,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map http action', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -211,7 +211,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map ports', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -222,7 +222,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map resources', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -234,7 +234,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map command', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -243,7 +243,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map args', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -253,7 +253,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map env', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -269,7 +269,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map envFrom', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -320,7 +320,7 @@ describe('k8s-manifest', () => {
         });
 
         it('should create a k8s client pod', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -330,7 +330,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should create a k8s client pod spec', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -338,7 +338,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should create a container array of k8s client containers', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -347,7 +347,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should set the termination grace period', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -355,7 +355,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should set the scheduler name', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -364,7 +364,7 @@ describe('k8s-manifest', () => {
 
 
         it('should set the serviceAccount', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -372,7 +372,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should set the security context', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -380,7 +380,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should set the scheduler name', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -388,7 +388,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should set the restart policy', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -396,7 +396,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should set the dnsPolicy', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -404,7 +404,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should set the image pull secrets', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -457,7 +457,7 @@ describe('k8s-manifest', () => {
         });
 
         it('should create a k8s client job', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -467,7 +467,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should create a job spec', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -475,7 +475,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map pod template', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -483,7 +483,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map pod spec', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -491,7 +491,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map pod template metadata', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -502,7 +502,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly set selector match expressions', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -518,7 +518,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly set selector match labels', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -526,7 +526,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly set selector', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -534,7 +534,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly set parallelism', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -542,7 +542,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly set completions', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -550,7 +550,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly set backoff limit', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -587,7 +587,7 @@ describe('k8s-manifest', () => {
         });
 
         it('should create a k8s client cron job', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -597,7 +597,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should create a k8s client cron job spec', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -605,7 +605,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map the schedule', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -613,7 +613,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should create a k8s client job template', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -621,7 +621,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should create a k8s client job spec', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -658,7 +658,7 @@ describe('k8s-manifest', () => {
         });
 
         it('should create a k8s client cron job', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -668,7 +668,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should create a k8s client cron job spec', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -676,7 +676,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map the schedule', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -684,7 +684,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should create a k8s client job template', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -692,7 +692,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should create a k8s client job spec', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -739,7 +739,7 @@ describe('k8s-manifest', () => {
         });
 
         it('should correctly map to k8s client deployment', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -749,7 +749,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map deployment spec', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -757,7 +757,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map deployment spec min ready seconds', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -765,7 +765,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map deployment spec replicas', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -773,7 +773,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map deployment spec progress deadline', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -781,7 +781,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map deployment spec revision history limit', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -789,7 +789,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map deployment spec paused', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -797,7 +797,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map deployment spec strategy', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -809,7 +809,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map deployment spec selector', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -818,7 +818,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map deployment spec template', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -943,7 +943,7 @@ describe('k8s-manifest', () => {
         });
 
         it('should correctly map to k8s client persistent volume', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -953,7 +953,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map to k8s client persistent volume spec', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -961,7 +961,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map persistent volume spec access modes ', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -970,7 +970,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map persistent volume spec aws elastic block store ', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -982,7 +982,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map persistent volume spec azure disk ', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -995,7 +995,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map persistent volume spec azure file', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -1007,7 +1007,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map persistent volume spec capacity', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -1015,7 +1015,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map persistent volume spec cephfs', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -1034,7 +1034,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map persistent volume spec cinder', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -1048,7 +1048,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map persistent volume spec claim reference', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -1060,7 +1060,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map persistent volume spec csi', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -1088,7 +1088,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map persistent volume spec fc', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -1163,7 +1163,7 @@ describe('k8s-manifest', () => {
         });
 
         it('should correctly map to k8s client persistent volume claim', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -1173,7 +1173,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map persistent volume claim spec', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -1181,7 +1181,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map persistent volume claim spec access modes', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -1190,7 +1190,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map persistent volume claim spec selector', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -1199,7 +1199,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map persistent volume claim spec resources', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -1208,7 +1208,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map string fields', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -1216,7 +1216,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map persistent volume claim status', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -1224,7 +1224,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map persistent volume claim status access modes', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -1254,7 +1254,7 @@ describe('k8s-manifest', () => {
         });
 
         it('should correctly map to k8s client secret', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -1264,7 +1264,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map data', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -1298,7 +1298,7 @@ describe('k8s-manifest', () => {
         });
 
         it('should correctly map to k8s client config map', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -1308,7 +1308,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map data', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -1353,7 +1353,7 @@ describe('k8s-manifest', () => {
         });
 
         it('should correctly map to k8s client metadata', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -1361,7 +1361,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map annotations', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -1371,7 +1371,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map dates', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -1380,7 +1380,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map labels', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -1389,7 +1389,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map name', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -1397,7 +1397,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map namespace', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -1405,7 +1405,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map owner references', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -1439,7 +1439,7 @@ describe('k8s-manifest', () => {
         });
 
         it('should correctly map to k8s client role', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 
@@ -1448,7 +1448,7 @@ describe('k8s-manifest', () => {
         })
 
         it('should correctly map rules', () => {
-            const subject = manifest(parsedYaml);
+            const subject = k8sManifest(parsedYaml);
 
 
 

@@ -1,4 +1,4 @@
-import {stringify} from './manifest.mjs';
+import {stringify} from './k8s-manifest.mjs';
 
 class K8sObjectHandle {
     constructor(api, manifest) {

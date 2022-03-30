@@ -1,8 +1,7 @@
 import k8s from '@kubernetes/client-node';
 import {K8sApi} from './k8s-api.mjs';
 import {K8sObjectHandle} from './k8s-object-handle.mjs';
-import {manifest, stringify} from './manifest.mjs';
-import { mapKindToApiVersion } from './map-kind-to-api-version.mjs';
+import {k8sManifest, stringify} from './k8s-manifest.mjs';
 import yaml from "yaml";
 
 class K8sClient {
@@ -16,7 +15,7 @@ class K8sClient {
 
         const parsedYaml = yaml.parse(yamlString);
 
-        const manifest = manifest(parsedYaml);
+        const manifest = k8sManifest(parsedYaml);
 
         const api = new K8sApi(this._kubeConfig);
 
@@ -55,16 +54,16 @@ class K8sClient {
 
         let targets = [];
         for (const resource of resources) {
-            const {response: { body } } = resource;
+            const {body} = resource;
 
             if (!body) {
                 throw new Error(`The body returned from the k8s node client was invalid. Response body: ${JSON.stringify(body)}`);
             }
 
-            const listManifest = manifest(body);
+            const listManifest = k8sManifest(body);
 
             for (const item of listManifest.items) {
-                targets.push(new K8sObjectHandle(api, manifest(item)));
+                targets.push(new K8sObjectHandle(api, k8sManifest(item)));
             }
         }
 
