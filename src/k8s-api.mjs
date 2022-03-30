@@ -6,7 +6,8 @@ var apiVersionToApiClientConstructor = { };
 
 const initApiVersionToApiClientConstructorMap = (kubeConfig) => {
 
-    let apiConstructor = (kubeConfig, api) => kubeConfig.makeApiClient(api);
+    const apiConstructor = (kubeConfig, api) => kubeConfig.makeApiClient(api);
+
     forEachApiResourceList(kubeConfig, (resourceList) => {
         apiVersionToApiClientConstructor[resourceList.groupVersion.toLowerCase()] = apiConstructor.bind(kubeConfig, api);
     })
@@ -18,7 +19,7 @@ var kindToApiClientConstructors = {};
 
 const initKindToClientConstructorMap = (kubeConfig) => {
 
-    let apiConstructor = (kubeConfig, api) => kubeConfig.makeApiClient(api);
+    const apiConstructor = (kubeConfig, api) => kubeConfig.makeApiClient(api);
     forEachApiResourceList(kubeConfig, (resourceList) => {
         for (const resource of resourceList.resources) {
 
@@ -56,6 +57,10 @@ const forEachApiResourceList = (kubeConfig, callback) => {
 
 class K8sApi {
     constructor(kubeConfig) {
+
+        kubeConfig.makeApiClient(k8s.CoreV1Api).getAPIResources().then(async (response) => {
+            console.log(`Dummy API Resource Fetch: ${JSON.stringify(response)}`);
+        })
 
         if (Object.keys(apiVersionToApiClientConstructor).length === 0) {
             console.log(`Initializing api to client constructor map.`)
