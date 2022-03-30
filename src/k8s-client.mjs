@@ -58,7 +58,7 @@ class K8sClient {
 
         let targets = [];
         for (const resource of resources) {
-            const {body} = resource;
+            const {response: {body} } = resource;
 
             if (!body) {
                 throw new Error(`The body returned from the k8s node client was invalid. Response body: ${JSON.stringify(body)}`);

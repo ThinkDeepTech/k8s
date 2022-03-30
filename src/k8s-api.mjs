@@ -46,13 +46,11 @@ const forEachApiResourceList = async (kubeConfig, callback) => {
 
         if (typeof fetchResources === 'function') {
 
-            const response = await fetchResources.bind(apiClient)();
+            const {response: {body}} = await fetchResources.bind(apiClient)();
 
-            console.log(`API Group response:\n\n${JSON.stringify(response)}`)
+            console.log(`API Group response body:\n\n${JSON.stringify(body)}`)
 
-            const resourceList = response?.body;
-
-            callback(k8sManifest(resourceList));
+            callback(k8sManifest(body));
         }
     }
 }
