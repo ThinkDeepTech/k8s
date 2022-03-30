@@ -42,11 +42,11 @@ const forEachApiResourceList = async (kubeConfig, callback) => {
 
         const apiClient = kubeConfig.makeApiClient(api);
 
-        const fetchResources = apiClient['getAPIResources'].bind(apiClient);
+        const fetchResources = apiClient['getAPIResources'];
 
         if (typeof fetchResources === 'function') {
 
-            const response = await fetchResources();
+            const response = await fetchResources.bind(apiClient)();
 
             console.log(`API Group response:\n\n${JSON.stringify(response)}`)
 
