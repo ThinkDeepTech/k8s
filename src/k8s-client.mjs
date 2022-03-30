@@ -1,5 +1,5 @@
 import {K8sApi} from './k8s-api.mjs';
-import {K8sManifest} from './k8s-manifest.mjs';
+import {K8sManifest} from './manifest.mjs';
 import {K8sObjectHandle} from './k8s-object-handle.mjs';
 import { mapKindToApiVersion } from './map-kind-to-api-version.mjs';
 import yaml from "yaml";
