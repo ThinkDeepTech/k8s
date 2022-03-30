@@ -50,6 +50,8 @@ const forEachApiResourceList = async (kubeConfig, callback) => {
         console.log(`Type of Fetch Resources:\n\n${typeof fetchResources}`);
         if (typeof fetchResources === 'function') {
 
+            console.log(`Getting ready to fetch resources...`);
+
             const response = await fetchResources();
 
             console.log(`API Group response:\n\n${JSON.stringify(response)}`)
