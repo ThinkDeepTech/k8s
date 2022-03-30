@@ -6,10 +6,8 @@ var apiVersionToApiClientConstructor = { };
 
 const initApiVersionToApiClientConstructorMap = async (kubeConfig) => {
 
-    const apiConstructor = (kubeConfig, api) => kubeConfig.makeApiClient(api);
-
-    await forEachApiResourceList(kubeConfig, (resourceList) => {
-        apiVersionToApiClientConstructor[resourceList.groupVersion.toLowerCase()] = apiConstructor.bind(kubeConfig, api);
+    await forEachApiResourceList(kubeConfig, (apiClient, resourceList) => {
+        apiVersionToApiClientConstructor[resourceList.groupVersion.toLowerCase()] = apiClient;
     })
 
     console.log(`Api Map:\n\n${JSON.stringify(apiVersionToApiClientConstructor)}`);
@@ -19,8 +17,7 @@ var kindToApiClientConstructors = {};
 
 const initKindToClientConstructorMap = async (kubeConfig) => {
 
-    const apiConstructor = (kubeConfig, api) => kubeConfig.makeApiClient(api);
-    await forEachApiResourceList(kubeConfig, (resourceList) => {
+    await forEachApiResourceList(kubeConfig, (apiClient, resourceList) => {
         for (const resource of resourceList.resources) {
 
             const resourceName = resource.name.toLowerCase();
@@ -28,7 +25,7 @@ const initKindToClientConstructorMap = async (kubeConfig) => {
                 kindToApiClientConstructors[resourceName] = [];
             }
 
-            kindToApiClientConstructors[resourceName].push(apiConstructor.bind(kubeConfig, api));
+            kindToApiClientConstructors[resourceName].push(apiClient);
         }
     });
 
@@ -50,7 +47,7 @@ const forEachApiResourceList = async (kubeConfig, callback) => {
 
             console.log(`API Group response body:\n\n${JSON.stringify(body)}`)
 
-            callback(k8sManifest(body));
+            callback(apiClient, k8sManifest(body));
         }
     }
 }
@@ -62,12 +59,6 @@ class K8sApi {
     }
 
     async init() {
-
-        const dummy = new k8s.KubeConfig();
-
-        dummy.loadFromCluster();
-
-        const api = dummy.makeApiClient(k8s.EventsV1Api);
 
         if (Object.keys(apiVersionToApiClientConstructor).length === 0) {
             console.log(`Initializing api to client constructor map.`)
