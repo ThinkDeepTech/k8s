@@ -67,14 +67,6 @@ class K8sApi {
 
     async init() {
 
-        const dummy = new k8s.KubeConfig();
-
-        const api = dummy.makeApiClient(k8s.EventsV1Api);
-
-        api.getAPIResources().then((response) => {
-
-        })
-
         if (Object.keys(apiVersionToApiClientConstructor).length === 0) {
             console.log(`Initializing api to client constructor map.`)
             await initApiVersionToApiClientConstructorMap(this._kubeConfig);
