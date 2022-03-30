@@ -88,9 +88,9 @@ class K8sApi {
         return this._deletionStrategy(manifest)();
     }
 
-    _listAllStrategy(kind, namespace) {
+    _listAllStrategy(prospectiveKind, namespace) {
 
-        const kind = k8sKind(kind.toLowerCase());
+        const kind = k8sKind(prospectiveKind.toLowerCase());
         const apis = this._clientApis(kind);
         const fetchAllData = async (listOperations) => listOperations.map((listOperation) => listOperation());
 
@@ -121,7 +121,7 @@ class K8sApi {
 
     _creationStrategy(manifest) {
 
-        const kind = k8sKind(kind.toLowerCase());
+        const kind = k8sKind(manifest.kind.toLowerCase());
         const api = this._clientApi(manifest.apiVersion);
         if (api[`createNamespaced${kind}`]) {
 
@@ -138,7 +138,7 @@ class K8sApi {
 
     _deletionStrategy(manifest) {
 
-        const kind = k8sKind(kind.toLowerCase());
+        const kind = k8sKind(manifest.kind.toLowerCase());
         const api = this._clientApi(manifest.apiVersion);
         if (api[`deleteNamespaced${kind}`]) {
 
