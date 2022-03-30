@@ -72,7 +72,6 @@ class K8sApi {
             await initKindToClientConstructorMap(this._kubeConfig);
         }
 
-        return this;
     }
 
     async create(manifest) {
