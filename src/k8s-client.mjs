@@ -9,10 +9,11 @@ class K8sClient {
     constructor() {
         this._kubeConfig = new k8s.KubeConfig();
         this._kubeConfig.loadFromCluster();
-        k8sApi.init(this._kubeConfig);
     }
 
     async create (yamlString) {
+
+        await k8sApi.init(this._kubeConfig);
 
         const parsedYaml = yaml.parse(yamlString);
 
@@ -30,6 +31,8 @@ class K8sClient {
     }
 
     async get(kind, name, namespace) {
+
+        await k8sApi.init(this._kubeConfig);
 
         const handles = await this.getAll(kind, namespace);
 
@@ -51,6 +54,8 @@ class K8sClient {
 
     async getAll(kind, namespace) {
 
+        await k8sApi.init(this._kubeConfig);
+
         const resources = await k8sApi.listAll(kind, namespace);
 
         let targets = [];
@@ -65,6 +70,8 @@ class K8sClient {
     }
 
     async delete (k8sObjectHandle) {
+        await k8sApi.init(this._kubeConfig);
+
         return k8sApi.deleteAll([k8sObjectHandle.manifest]);
     }
 }

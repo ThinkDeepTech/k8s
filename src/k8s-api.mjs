@@ -4,7 +4,10 @@ import { k8sManifest } from './k8s-manifest.mjs';
 
 const init = async (kubeConfig) => {
     if (!initialized()) {
+        console.log(`Initializing api version to client map.`)
         await initApiVersionToApiClientMap(kubeConfig);
+
+        console.log(`Initializing kind maps.`)
         await initKindMaps(kubeConfig);
     }
 };
@@ -151,6 +154,8 @@ const listAllStrategy = (prospectiveKind, namespace) => {
 const creationStrategy = (manifest) => {
 
     const kind = k8sKind(manifest.kind.toLowerCase());
+
+    console.log(`Fetching api strategy for api ${manifest.apiVersion}`);
     const api = clientApi(manifest.apiVersion);
     if (api[`createNamespaced${kind}`]) {
 
