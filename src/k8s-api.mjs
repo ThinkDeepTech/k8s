@@ -4,11 +4,11 @@ import { k8sManifest } from './k8s-manifest.mjs';
 
 const init = async (kubeConfig) => {
     if (!initialized()) {
-        console.log(`Initializing api version to client map.`)
-        await initApiVersionToApiClientMap(kubeConfig);
-
         console.log(`Initializing kind maps.`)
         await initKindMaps(kubeConfig);
+
+        console.log(`Initializing api version to client map.`)
+        await initApiVersionToApiClientMap(kubeConfig);
     }
 };
 
@@ -73,11 +73,6 @@ const forEachApi = async (kubeConfig, resourceFunctionName, callback) => {
             const {response: {body}} = await fetchResources.bind(apiClient)();
 
             console.log(`API ${resourceFunctionName} response body:\n\n${JSON.stringify(body)}`)
-
-            if (!body.apiVersion) {
-                body.apiVersion = preferredVersion(body.kind);
-                console.log(`Set api version to ${body.apiVersion} for object ${body.kind}`);
-            }
 
             callback(apiClient, k8sManifest(body));
         }

@@ -8,6 +8,7 @@ const k8sManifest = (configuration) => {
     let target = null;
     if (!!configuration?.constructor?.name && clientObjectType(configuration.constructor.name)) {
 
+        console.log(`Configuring using client object`)
         configuration.kind = k8sKind(configuration.constructor.name);
 
         // TODO: Use dynamically determined preferred API version.
@@ -15,8 +16,11 @@ const k8sManifest = (configuration) => {
         target = configuration;
     } else {
 
+        console.log(`Configuring using standard object`)
         const objectPrefix = objectVersion(configuration.apiVersion);
         const objectKind = k8sKind(configuration.kind);
+
+        console.log(`Type to create: ${objectPrefix}${objectKind}`)
         target = k8sClientObject(`${objectPrefix}${objectKind}`, configuration);
     }
 
@@ -37,6 +41,7 @@ const stringify = () => {
 
 const k8sClientObject = (typeName, value) => {
 
+    console.log(`Handling type: ${typeName}\n\n`);
     if (simpleType(typeName, value)) {
 
         if (dateType(typeName) && !!value) {
