@@ -70,12 +70,12 @@ const forEachApi = async (kubeConfig, resourceFunctionName, callback) => {
 
         if (typeof fetchResources === 'function') {
 
-            const {response: {statusCode, body}} = await fetchResources.bind(apiClient)();
+            const {response: {body}} = await fetchResources.bind(apiClient)();
 
             console.log(`API ${resourceFunctionName} response body:\n\n${JSON.stringify(body)}`)
 
             // TODO: Verify this is correct handling. Are objects not available?
-            if (statusCode === 404) {
+            if (typeof body !== 'object' && Object.keys(body).length === 0) {
                 continue;
             }
 
