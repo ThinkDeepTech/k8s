@@ -66,13 +66,17 @@ const forEachApi = async (kubeConfig, resourceFunctionName, callback) => {
 
         const apiClient = kubeConfig.makeApiClient(api);
 
+        console.log(`Api Client:\n\n${apiClient}`);
         const fetchResources = apiClient[resourceFunctionName];
 
+
+        console.log(`Attached to resource function:\n\n${fetchResources}`);
         if (typeof fetchResources === 'function') {
 
+            console.log(`About to run function fetch resources\n\n`);
             const {response: {body}} = await fetchResources.bind(apiClient)();
 
-            console.log(`API ${resourceFcn} response body:\n\n${JSON.stringify(body)}`)
+            console.log(`API ${resourceFunctionName} response body:\n\n${JSON.stringify(body)}`)
 
             callback(apiClient, k8sManifest(body));
         }
