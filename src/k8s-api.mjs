@@ -12,7 +12,7 @@ const init = async (kubeConfig) => {
     }
 };
 
-const initialized = async () => {
+const initialized = () => {
     return (Object.keys(apiVersionToApiClient).length > 0) && (Object.keys(kindToApiClients).length > 0)
         && (Object.keys(kindToPreferredVersion).length > 0);
 }
