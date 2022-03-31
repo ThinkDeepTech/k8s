@@ -35,6 +35,8 @@ const k8sManifest = (configuration) => {
         throw new Error(`${this.kind} wasn't recognized as a valid kind. Are you sure you spelled it correctly?`);
     }
 
+    console.log(`Configured k8s object\n\n`);
+
     return target;
 };
 
@@ -44,7 +46,6 @@ const stringify = () => {
 
 const k8sClientObject = (typeName, value) => {
 
-    console.log(`Handling type: ${typeName}\n\n`);
     if (simpleType(typeName, value)) {
 
         if (dateType(typeName) && !!value) {
