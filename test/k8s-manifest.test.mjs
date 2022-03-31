@@ -10,6 +10,7 @@ describe('k8s-manifest', () => {
 
         it('should correctly map k8s client objects when supplied as configurations', () => {
             const configuration = new k8s.V1Pod();
+            configuration.apiVersion = 'dummyversion';
 
             const subject = k8sManifest(configuration);
 
@@ -19,6 +20,7 @@ describe('k8s-manifest', () => {
 
         it('should correctly map beta k8s client objects when supplied as configurations', () => {
             const configuration = new k8s.V1beta1ClusterRole();
+            configuration.apiVersion = 'dummyversion';
 
             const subject = k8sManifest(configuration);
 
@@ -28,6 +30,7 @@ describe('k8s-manifest', () => {
 
         it('should correctly map alpha k8s client objects when supplied as configurations', () => {
             const configuration = new k8s.V1alpha1ClusterRole();
+            configuration.apiVersion = 'dummyversion';
 
             const subject = k8sManifest(configuration);
 

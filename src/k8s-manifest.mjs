@@ -6,9 +6,11 @@ import { mapKindToApiVersion } from "./map-kind-to-api-version.mjs";
 const k8sManifest = (configuration) => {
 
     let target = null;
-    if (!!configuration?.constructor?.name && (configuration.constructor.name in k8s)) {
+    if (!!configuration?.constructor?.name && clientObjectType(configuration.constructor.name)) {
 
         configuration.kind = k8sKind(configuration.constructor.name);
+
+        // TODO: Use dynamically determined preferred API version.
         configuration.apiVersion = mapKindToApiVersion(configuration.kind);
         target = configuration;
     } else {
@@ -35,7 +37,7 @@ const stringify = () => {
 
 const k8sClientObject = (typeName, value) => {
 
-    if (baseType(typeName, value)) {
+    if (simpleType(typeName, value)) {
 
         if (dateType(typeName) && !!value) {
             return new Date(value);
@@ -54,12 +56,12 @@ const k8sClientObject = (typeName, value) => {
     }
 }
 
-const baseType = (typeName, value) => {
-    return (!mapType(typeName) && !arrayType(typeName) && !object(value)) || dateType(typeName);
+const simpleType = (typeName) => {
+    return (!mapType(typeName) && !arrayType(typeName) && !clientObjectType(typeName)) || dateType(typeName) || objectType(typeName);
 }
 
-const object = (value) =>  {
-    return typeof value === 'object';
+const objectType = (typeName) =>  {
+    return typeName.toLowerCase() === 'object';
 }
 
 const dateType = (typeName) => {
@@ -73,6 +75,10 @@ const arrayType = (typeName) => {
 const mapType = (typeName) => {
     return typeName.includes('{');
 }
+
+const clientObjectType = (typeName) => {
+    return typeName in k8s;
+};
 
 const attributeTypeMap = (typeName, attributeName) => {
 
@@ -126,11 +132,7 @@ const handleMap = (typeName, value) => {
 
 const handleClientObjectType = (typeName, value) => {
 
-    if (typeName === 'object') {
-        return value;
-    }
-
-    let subject = new k8s[typeName]();
+    const subject = new k8s[typeName]();
 
     for (const attribute in value) {
 

@@ -1,178 +1,185 @@
 import k8s from '@kubernetes/client-node';
 import { k8sKind } from './k8s-kind.mjs';
-import { k8sManifest, stringify } from './k8s-manifest.mjs';
+import { k8sManifest } from './k8s-manifest.mjs';
 
-var apiVersionToApiClientConstructor = { };
+const init = async (kubeConfig) => {
+    if (!initialized()) {
+        await initApiVersionToApiClientMap(kubeConfig);
+        await initKindMaps(kubeConfig);
+    }
+};
 
-const initApiVersionToApiClientConstructorMap = async (kubeConfig) => {
-
-    await forEachApiResourceList(kubeConfig, (apiClient, resourceList) => {
-        apiVersionToApiClientConstructor[resourceList.groupVersion.toLowerCase()] = apiClient;
-    })
-
-    console.log(`Api Map:\n\n${JSON.stringify(apiVersionToApiClientConstructor)}`);
+const initialized = async () => {
+    return (Object.keys(apiVersionToApiClient).length > 0) && (Object.keys(kindToApiClients).length > 0)
+        && (Object.keys(kindToPreferredVersion).length > 0);
 }
 
-var kindToApiClientConstructors = {};
+const apiVersionToApiClient = { };
+const initApiVersionToApiClientMap = async (kubeConfig) => {
 
-const initKindToClientConstructorMap = async (kubeConfig) => {
+    await forEachApiResourceList(kubeConfig, (apiClient, resourceList) => {
+        apiVersionToApiClient[resourceList.groupVersion.toLowerCase()] = apiClient;
+    })
+
+    console.log(`Api Map:\n\n${JSON.stringify(apiVersionToApiClient)}`);
+}
+
+const kindToApiClients = {};
+const kindToPreferredVersion = {};
+const initKindMaps = async (kubeConfig) => {
 
     await forEachApiResourceList(kubeConfig, (apiClient, resourceList) => {
         for (const resource of resourceList.resources) {
 
             const resourceName = resource.name.toLowerCase();
-            if (!kindToApiClientConstructors[resourceName]) {
-                kindToApiClientConstructors[resourceName] = [];
+            if (!kindToApiClients[resourceName]) {
+                kindToApiClients[resourceName] = [];
             }
 
-            kindToApiClientConstructors[resourceName].push(apiClient);
+            kindToApiClients[resourceName].push(apiClient);
+            kindToPreferredVersion[resourceName] = `${resource.group}/${resource.version}`;
         }
     });
 
-    console.log(`Kind Map:\n\n${JSON.stringify(kindToApiClientConstructors)}`);
+    console.log(`Kind Map:\n\n${JSON.stringify(kindToApiClients)}\n\n`);
 
+    console.log(`Preferred version Map:\n\n${JSON.stringify(kindToPreferredVersion)}\n\n`);
 };
 
-const forEachApiResourceList = async (kubeConfig, callback) => {
+const clientApis = (kind) => {
+    return kindToApiClients[kind.toLowerCase()] || [];
+}
 
+const clientApi = (apiVersion) => {
+    return apiVersionToApiClient[apiVersion.toLowerCase()] || null;
+}
+
+const forEachApiResourceList = async (kubeConfig, callback) => {
+    await forEachApi(kubeConfig, 'getAPIResources', callback);
+}
+
+const forEachApi = async (kubeConfig, resourceFunctionName, callback) => {
     for (const api of k8s.APIS) {
 
         const apiClient = kubeConfig.makeApiClient(api);
 
-        const fetchResources = apiClient['getAPIResources'];
+        const fetchResources = apiClient[resourceFunctionName];
 
         if (typeof fetchResources === 'function') {
 
             const {response: {body}} = await fetchResources.bind(apiClient)();
 
-            console.log(`API Group response body:\n\n${JSON.stringify(body)}`)
+            console.log(`API ${resourceFcn} response body:\n\n${JSON.stringify(body)}`)
 
             callback(apiClient, k8sManifest(body));
         }
     }
+};
+
+const preferredVersion = (kind) => {
+    const version = kindToPreferredVersion[kind.toLowerCase()];
+
+    if (!version) {
+        throw new Error(`The kind ${kind} didn't have a registered preferred version. Received: ${version}`);
+    }
+
+    return version;
+};
+
+const createAll = async (manifests) => {
+    return Promise.all(manifests.map(async(manifest) => await creationStrategy(manifest)()));
 }
 
-class K8sApi {
+const deleteAll = async (manifests) => {
+    return Promise.all(manifests.map(async (manifest) => await deletionStrategy(manifest)()));
+}
 
-    constructor(kubeConfig) {
-        this._kubeConfig = kubeConfig;
-    }
+const listAll = async (kind, namespace) => {
+    console.log(`Listing all objects with kind ${kind}${ !!namespace ? ` in namespace ${namespace}`: ``}.`);
+    const responses = listAllStrategy(kind, namespace)();
 
-    async init() {
+    return Promise.all(responses.map((data) => {
 
-        if (Object.keys(apiVersionToApiClientConstructor).length === 0) {
-            console.log(`Initializing api to client constructor map.`)
-            await initApiVersionToApiClientConstructorMap(this._kubeConfig);
+        const {response: {body}} = data;
+
+        if (!body) {
+            throw new Error(`The API response didn't include a valid body. Received: ${body}`);
         }
 
-        if (Object.keys(kindToApiClientConstructors).length === 0) {
-            console.log(`Initializing kind to client constructors map.`)
-            await initKindToClientConstructorMap(this._kubeConfig);
+        console.log(`In List all.\n\nReceived body:\n\n${JSON.stringify(body)}`);
+
+        if (!body.apiVersion) {
+            body.apiVersion = preferredVersion(body.kind);
+            console.log(`Set api version to ${body.apiVersion} for object ${body.kind}`);
         }
 
-    }
+        return k8sManifest(body);
+    }));
+}
 
-    async create(manifest) {
-        console.log(`Creating k8s object:\n\n${stringify(manifest)}`);
-        return this._creationStrategy(manifest)();
-    }
+const listAllStrategy = (prospectiveKind, namespace) => {
 
-    async listAll(kind, namespace) {
-        console.log(`Listing all objects with kind ${kind}${ !!namespace ? ` in namespace ${namespace}`: ``}.`);
-        return this._listAllStrategy(kind, namespace)();
-    }
+    const kind = k8sKind(prospectiveKind.toLowerCase());
+    const apis = clientApis(kind);
+    const fetchAllData = async (listOperations) => Promise.all(listOperations.map(async (listOperation) => await listOperation()));
 
-    async delete(manifest) {
-        console.log(`Deleting k8s object:\n\n${stringify(manifest)}`);
-        return this._deletionStrategy(manifest)();
-    }
+    let listOperations = [];
+    for (const api of apis) {
 
-    _listAllStrategy(prospectiveKind, namespace) {
+        let listOperation = null;
+        if (!namespace && api[`list${kind}ForAllNamespaces`]) {
 
-        const kind = k8sKind(prospectiveKind.toLowerCase());
-        const apis = this._clientApis(kind);
-        const fetchAllData = async (listOperations) => listOperations.map((listOperation) => listOperation());
+            listOperation = api[`list${kind}ForAllNamespaces`].bind(api);
+        } else if (api[`listNamespaced${kind}`] && !!namespace) {
 
-        let listOperations = [];
-        for (const api of apis) {
-
-            let listOperation = null;
-            if (!namespace && api[`list${kind}ForAllNamespaces`]) {
-
-                listOperation = api[`list${kind}ForAllNamespaces`].bind(api);
-            } else if (api[`listNamespaced${kind}`] && !!namespace) {
-
-                listOperation = api[`listNamespaced${kind}`].bind(api, namespace);
-            } else {
-
-                const namespaceText = namespace ? `and namespace ${namespace}` : ``;
-
-                throw new Error(`
-                    The list all function for kind ${kind} ${namespaceText} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
-                `)
-            }
-
-            listOperations.push(listOperation);
-        }
-
-        return fetchAllData.bind(listOperations);
-    }
-
-    _creationStrategy(manifest) {
-
-        const kind = k8sKind(manifest.kind.toLowerCase());
-        const api = this._clientApi(manifest.apiVersion);
-        if (api[`createNamespaced${kind}`]) {
-
-            return api[`createNamespaced${kind}`].bind(api, manifest.metadata.namespace, manifest);
-        } else if (api[`create${kind}`]) {
-
-            return api[`create${kind}`].bind(api, manifest);
+            listOperation = api[`listNamespaced${kind}`].bind(api, namespace);
         } else {
+
+            const namespaceText = namespace ? `and namespace ${namespace}` : ``;
+
             throw new Error(`
-                The creation function for kind ${kind} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
+                The list all function for kind ${kind} ${namespaceText} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
             `)
         }
+
+        listOperations.push(listOperation);
     }
 
-    _deletionStrategy(manifest) {
+    return fetchAllData.bind(listOperations);
+}
 
-        const kind = k8sKind(manifest.kind.toLowerCase());
-        const api = this._clientApi(manifest.apiVersion);
-        if (api[`deleteNamespaced${kind}`]) {
+const creationStrategy = (manifest) => {
 
-            return api[`deleteNamespaced${kind}`].bind(api, manifest.metadata.name, manifest.metadata.namespace);
-        } else if (api[`delete${kind}`]) {
+    const kind = k8sKind(manifest.kind.toLowerCase());
+    const api = clientApi(manifest.apiVersion);
+    if (api[`createNamespaced${kind}`]) {
 
-            return api[`delete${kind}`].bind(api, manifest.metadata.name);
-        } else {
-            throw new Error(`
-                The deletion function for kind ${kind} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
-            `)
-        }
-    }
+        return api[`createNamespaced${kind}`].bind(api, manifest.metadata.namespace, manifest);
+    } else if (api[`create${kind}`]) {
 
-    _clientApis(kind) {
-
-        const constructApis = (kubeConfig) => kindToApiClients[kind.toLowerCase()].map((constructApi) => constructApi(kubeConfig));
-
-        if (!constructApi) {
-            throw new Error(`The k8s apiVersion not yet supported. Received: ${apiVersion}`);
-        }
-
-        return constructApis(this._kubeConfig);
-    }
-
-    _clientApi(apiVersion) {
-
-        const constructApi = apiVersionToApiClientConstructor[apiVersion.toLowerCase()];
-
-        if (!constructApi) {
-            throw new Error(`The k8s apiVersion not yet supported. Received: ${apiVersion}`);
-        }
-
-        return constructApi(this._kubeConfig);
+        return api[`create${kind}`].bind(api, manifest);
+    } else {
+        throw new Error(`
+            The creation function for kind ${kind} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
+        `)
     }
 }
 
-export { K8sApi };
+const deletionStrategy = (manifest) => {
+
+    const kind = k8sKind(manifest.kind.toLowerCase());
+    const api = clientApi(manifest.apiVersion);
+    if (api[`deleteNamespaced${kind}`]) {
+
+        return api[`deleteNamespaced${kind}`].bind(api, manifest.metadata.name, manifest.metadata.namespace);
+    } else if (api[`delete${kind}`]) {
+
+        return api[`delete${kind}`].bind(api, manifest.metadata.name);
+    } else {
+        throw new Error(`
+            The deletion function for kind ${kind} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
+        `)
+    }
+}
+
+export default { init, createAll, listAll, deleteAll };

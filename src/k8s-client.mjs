@@ -1,5 +1,5 @@
 import k8s from '@kubernetes/client-node';
-import {K8sApi} from './k8s-api.mjs';
+import k8sApi from './k8s-api.mjs';
 import {K8sObjectHandle} from './k8s-object-handle.mjs';
 import {k8sManifest, stringify} from './k8s-manifest.mjs';
 import yaml from "yaml";
@@ -9,6 +9,7 @@ class K8sClient {
     constructor() {
         this._kubeConfig = new k8s.KubeConfig();
         this._kubeConfig.loadFromCluster();
+        k8sApi.init(this._kubeConfig);
     }
 
     async create (yamlString) {
@@ -17,13 +18,11 @@ class K8sClient {
 
         const manifest = k8sManifest(parsedYaml);
 
-        const api = new K8sApi(this._kubeConfig);
+        await k8sApi.createAll([manifest]);
 
-        await api.init();
+        console.log(`Created object:\n\n${stringify(manifest)}`);
 
-        await api.create(manifest);
-
-        return new K8sObjectHandle(api, manifest);
+        return new K8sObjectHandle(manifest);
     }
 
     async apply() {
@@ -33,6 +32,8 @@ class K8sClient {
     async get(kind, name, namespace) {
 
         const handles = await this.getAll(kind, namespace);
+
+        console.log(`Fetched handles:\n\n${JSON.stringify(handles)}`);
 
         let target = null;
         for (const handle of handles) {
@@ -50,24 +51,13 @@ class K8sClient {
 
     async getAll(kind, namespace) {
 
-        const api = new K8sApi(this._kubeConfig);
-
-        await api.init();
-
-        const resources = await api.listAll(kind, namespace);
+        const resources = await k8sApi.listAll(kind, namespace);
 
         let targets = [];
         for (const resource of resources) {
-            const {response: {body} } = resource;
-
-            if (!body) {
-                throw new Error(`The body returned from the k8s node client was invalid. Response body: ${JSON.stringify(body)}`);
-            }
-
-            const listManifest = k8sManifest(body);
-
-            for (const item of listManifest.items) {
-                targets.push(new K8sObjectHandle(api, k8sManifest(item)));
+            for (const item of resource.items) {
+                // TODO: Is it necessary to have k8sManifest here?
+                targets.push(new K8sObjectHandle(k8sManifest(item)));
             }
         }
 
@@ -75,12 +65,7 @@ class K8sClient {
     }
 
     async delete (k8sObjectHandle) {
-
-        const api = k8sObjectHandle.api;
-
-        const manifest = k8sObjectHandle.manifest;
-
-        return api.delete(manifest);
+        return k8sApi.deleteAll([k8sObjectHandle.manifest]);
     }
 }
 
