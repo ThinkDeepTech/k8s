@@ -52,6 +52,53 @@ describe('k8s-manifest', () => {
             expect(subject.constructor.name).to.include('Pod');
         })
 
+        it('should correctly map api resource list objects when supplied as configuration', () => {
+            const configuration = {
+                "kind":"APIResourceList",
+                "groupVersion":"v1",
+                "resources":[{
+                    "name":"bindings",
+                    "singularName":"",
+                    "namespaced":true,
+                    "kind":"Binding",
+                    "verbs":["create"]
+                },{
+                    "name":"componentstatuses",
+                    "singularName":"",
+                    "namespaced":false,
+                    "kind":"ComponentStatus",
+                    "verbs":["get","list"],
+                    "shortNames":["cs"]
+                },{
+                    "name":"configmaps",
+                    "singularName":"",
+                    "namespaced":true,
+                    "kind":"ConfigMap",
+                    "verbs":["create","delete","deletecollection","get","list","patch","update","watch"],
+                    "shortNames":["cm"],"storageVersionHash":"qFsyl6wFWjQ="
+                },{
+                    "name":"endpoints",
+                    "singularName":"",
+                    "namespaced":true,
+                    "kind":"Endpoints",
+                    "verbs":["create","delete","deletecollection","get","list","patch","update","watch"],
+                    "shortNames":["ep"],
+                    "storageVersionHash":"fWeeMqaN/OA="
+                },{
+                    "name":"events",
+                    "singularName":"",
+                    "namespaced":true,
+                    "kind":"Event",
+                    "verbs":["create","delete","deletecollection","get","list","patch","update","watch"],
+                    "shortNames":["ev"],
+                    "storageVersionHash":"r2yiGXH7wu8="
+                }]};
+
+            const subject = k8sManifest(configuration);
+
+            expect(subject.constructor.name).to.include('APIResourceList');
+        })
+
         it('should throw an error if a recognized kind is not supplied', () => {
             const configuration = {
                 apiVersion: 'v1',
@@ -69,6 +116,7 @@ describe('k8s-manifest', () => {
                 expect(e.message.toString()).to.include(`wasn't found in the k8s client library. Are you sure you supplied an accepted kind?`);
             }
         })
+
 
     })
 

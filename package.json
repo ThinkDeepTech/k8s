@@ -1,6 +1,6 @@
 {
   "name": "@thinkdeep/k8s",
-  "version": "1.0.43",
+  "version": "1.0.44",
   "description": "K8s node client tag for processing yaml configurations in javascript code.",
   "main": "src/k8s-client.mjs",
   "repository": "git@github.com:ThinkDeepTech/k8s.git",

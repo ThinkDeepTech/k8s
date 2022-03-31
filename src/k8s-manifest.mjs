@@ -17,6 +17,9 @@ const k8sManifest = (configuration) => {
     } else {
 
         console.log(`Configuring using standard object`)
+        if (!configuration.apiVersion) {
+            configuration.apiVersion = configuration.groupVersion;
+        }
         const objectPrefix = objectVersion(configuration.apiVersion);
         const objectKind = k8sKind(configuration.kind);
 
