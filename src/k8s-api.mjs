@@ -74,7 +74,7 @@ const forEachApi = async (kubeConfig, resourceFunctionName, callback) => {
 
             const body = response.response.body;
 
-            console.log(`API ${resourceFunctionName} response body:\n\n${JSON.stringify(body)}`)
+            console.log(`API ${resourceFunctionName} response body:\n\n${JSON.stringify(response)}`)
 
             // TODO: Verify this is correct handling. Are objects not available?
             if (response.statusCode === 404) {
