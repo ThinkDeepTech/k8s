@@ -245,4 +245,4 @@ class K8sApi {
 
 
 
-export default { K8sApi };
+export { K8sApi };
