@@ -9,7 +9,7 @@ class K8sClient {
     constructor() {
         this._kubeConfig = new k8s.KubeConfig();
         this._kubeConfig.loadFromCluster();
-        this._api = new K8sApi(this._kubeConfig);
+        this._api = new K8sApi();
     }
 
     async create (yamlString) {
@@ -66,6 +66,9 @@ class K8sClient {
     }
 
     async delete (k8sObjectHandle) {
+
+        await this._api.init(this._kubeConfig);
+
         return this._api.deleteAll([k8sObjectHandle.manifest]);
     }
 }

@@ -206,7 +206,7 @@ class K8sApi {
 
     _deletionStrategy(manifest) {
 
-        const kind = k8sKind(manifest.kind.toLowerCase());
+        const kind = k8sKind(manifest.constructor.name.toLowerCase());
         const api = this._clientApi(manifest.apiVersion);
         if (api[`deleteNamespaced${kind}`]) {
 
