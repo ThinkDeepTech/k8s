@@ -1,5 +1,5 @@
 import k8s from '@kubernetes/client-node';
-import {k8sApi} from './k8s-api.mjs';
+import {K8sApi} from './k8s-api.mjs';
 import {K8sObjectHandle} from './k8s-object-handle.mjs';
 import {k8sManifest, stringify} from './k8s-manifest.mjs';
 import yaml from "yaml";
@@ -9,7 +9,7 @@ class K8sClient {
     constructor() {
         this._kubeConfig = new k8s.KubeConfig();
         this._kubeConfig.loadFromCluster();
-        this._api = new k8sApi(this._kubeConfig);
+        this._api = new K8sApi(this._kubeConfig);
     }
 
     async create (yamlString) {
