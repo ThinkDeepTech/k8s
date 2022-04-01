@@ -31,10 +31,8 @@ const initKindMaps = async (kubeConfig) => {
 
     await forEachApiResourceList(kubeConfig, (apiClient, resourceList) => {
 
-        console.log(`Initializing clients map.\n\n${stringify(resourceList)}`);
         for (const resource of resourceList.resources) {
 
-            console.log(`Handling resource:\n\n${stringify(resource)}`);
             const resourceName = resource.name.toLowerCase();
             if (!kindToApiClients[resourceName]) {
                 kindToApiClients[resourceName] = [];
@@ -78,8 +76,6 @@ const forEachApi = async (kubeConfig, resourceFunctionName, callback) => {
             } catch (e) {
 
                 const {response: {statusCode}} = e;
-                console.log(`An error occurred while fetching resources.\n\n${JSON.stringify(e)}`);
-
                 if (statusCode !== 404) {
                     throw e;
                 }
@@ -119,7 +115,7 @@ const deleteAll = async (manifests) => {
 
 const listAll = async (kind, namespace) => {
     console.log(`Listing all objects with kind ${kind}${ !!namespace ? ` in namespace ${namespace}`: ``}.`);
-    const responses = listAllStrategy(kind, namespace)();
+    const responses = await listAllStrategy(kind, namespace)();
 
     console.log(`List all response:\n\n${JSON.stringify(responses)}`);
 
