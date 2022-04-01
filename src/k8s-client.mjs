@@ -14,6 +14,8 @@ class K8sClient {
 
     async create (yamlString) {
 
+        await this._api.init(this._kubeConfig);
+
         const parsedYaml = yaml.parse(yamlString);
 
         const manifest = k8sManifest(parsedYaml);
@@ -28,6 +30,8 @@ class K8sClient {
     }
 
     async get(kind, name, namespace) {
+
+        await this._api.init(this._kubeConfig);
 
         const handles = await this.getAll(kind, namespace);
 
@@ -46,6 +50,8 @@ class K8sClient {
     }
 
     async getAll(kind, namespace) {
+
+        await this._api.init(this._kubeConfig);
 
         const resources = await this._api.listAll(kind, namespace);
 

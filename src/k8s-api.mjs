@@ -4,13 +4,11 @@ import { k8sManifest } from './k8s-manifest.mjs';
 
 class K8sApi {
 
-    constructor(kubeConfig) {
+    constructor() {
         this._apiVersionToApiClient = { };
         this._kindToApiClients = {};
         this._kindToGroupVersion = {};
         this._groupVersionToPreferredVersion = {};
-
-        this.init(kubeConfig);
     }
 
     async init(kubeConfig) {
