@@ -100,7 +100,18 @@ const preferredVersion = (kind) => {
 };
 
 const createAll = async (manifests) => {
-    return Promise.all(manifests.map(async(manifest) => await creationStrategy(manifest)()));
+    return Promise.all(manifests.map(async(manifest) => {
+        try {
+            await creationStrategy(manifest)();
+        } catch (e) {
+            console.log(`Creation error object:\n\n${e}`);
+
+            console.log(`Creation error object stringified: ${JSON.stringify(e)}`);
+            if (e.response.statusCode !== 409) {
+                throw e;
+            }
+        }
+    }));
 }
 
 const deleteAll = async (manifests) => {
