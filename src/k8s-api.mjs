@@ -2,237 +2,247 @@ import k8s from '@kubernetes/client-node';
 import { k8sKind } from './k8s-kind.mjs';
 import { k8sManifest } from './k8s-manifest.mjs';
 
-const init = async (kubeConfig) => {
-    if (!initialized()) {
-        console.log(`Initializing kind maps.`)
-        await initKindMaps(kubeConfig);
+class K8sApi {
 
-        console.log(`Initializing api version to client map.`)
-        await initApiVersionToApiClientMap(kubeConfig);
+    constructor(kubeConfig) {
+        this._apiVersionToApiClient = { };
+        this._kindToApiClients = {};
+        this._kindToGroupVersion = {};
+        this._groupVersionToPreferredVersion = {};
 
-        console.log(`kind to group version Map:\n\n${JSON.stringify(kindToGroupVersion)}\n\n`);
-
-        console.log(`group version to preferred map:\n\n${JSON.stringify(groupVersionToPreferredVersion)}`);
+        this.init(kubeConfig);
     }
-};
 
-const initialized = () => {
-    return (Object.keys(apiVersionToApiClient).length > 0) && (Object.keys(kindToApiClients).length > 0)
-        && (Object.keys(kindToGroupVersion).length > 0) && (Object.keys(groupVersionToPreferredVersion).length > 0);
-}
+    async init(kubeConfig) {
+        if (!this.initialized()) {
+            console.log(`Initializing kind maps.`)
+            await this._initKindMaps(kubeConfig);
 
-const apiVersionToApiClient = { };
-const initApiVersionToApiClientMap = async (kubeConfig) => {
+            console.log(`Initializing api version to client map.`)
+            await this._initApiVersionToApiClientMap(kubeConfig);
 
-    await forEachApiResourceList(kubeConfig, (apiClient, resourceList) => {
-        apiVersionToApiClient[resourceList.groupVersion.toLowerCase()] = apiClient;
-    })
-}
+            console.log(`kind to group version Map:\n\n${JSON.stringify(this._kindToGroupVersion)}\n\n`);
 
-const kindToApiClients = {};
-const kindToGroupVersion = {};
-const groupVersionToPreferredVersion = {};
-const initKindMaps = async (kubeConfig) => {
+            console.log(`group version to preferred map:\n\n${JSON.stringify(this._groupVersionToPreferredVersion)}`);
+        }
+    };
 
-    return Promise.all([
-        forEachApiResourceList(kubeConfig, (apiClient, resourceList) => {
+    initialized() {
+        return (Object.keys(this._apiVersionToApiClient).length > 0) && (Object.keys(this._kindToApiClients).length > 0)
+            && (Object.keys(this._kindToGroupVersion).length > 0) && (Object.keys(this._groupVersionToPreferredVersion).length > 0);
+    }
 
-            for (const resource of resourceList.resources) {
+    async _initApiVersionToApiClientMap(kubeConfig) {
 
-                const resourceName = resource.name.toLowerCase();
-                if (!kindToApiClients[resourceName]) {
-                    kindToApiClients[resourceName] = [];
-                }
-
-                kindToApiClients[resourceName].push(apiClient);
-
-                kindToGroupVersion[resourceName] = resourceList.groupVersion;
-            }
-        }),
-        forEachApiGroup(kubeConfig, (apiClient, apiGroup) => {
-            for (const entry of apiGroup.versions) {
-                groupVersionToPreferredVersion[entry.groupVersion] = apiGroup.preferredVersion.groupVersion;
-            }
+        await this._forEachApiResourceList(kubeConfig, (apiClient, resourceList) => {
+            this._apiVersionToApiClient[resourceList.groupVersion.toLowerCase()] = apiClient;
         })
-    ]);
-};
+    }
 
-const clientApis = (kind) => {
-    return kindToApiClients[kind.toLowerCase()] || [];
-}
+    async _initKindMaps(kubeConfig) {
 
-const clientApi = (apiVersion) => {
-    return apiVersionToApiClient[apiVersion.toLowerCase()] || null;
-}
+        return Promise.all([
+            this._forEachApiResourceList(kubeConfig, (apiClient, resourceList) => {
 
-const forEachApiGroup = async (kubeConfig, callback) => {
-    await forEachApi(kubeConfig, 'getAPIGroup', callback);
-}
+                for (const resource of resourceList.resources) {
 
-const forEachApiResourceList = async (kubeConfig, callback) => {
-    await forEachApi(kubeConfig, 'getAPIResources', callback);
-}
+                    const resourceName = resource.name.toLowerCase();
+                    if (!this._kindToApiClients[resourceName]) {
+                        this._kindToApiClients[resourceName] = [];
+                    }
 
-const forEachApi = async (kubeConfig, resourceFunctionName, callback) => {
-    for (const api of k8s.APIS) {
+                    this._kindToApiClients[resourceName].push(apiClient);
 
-        const apiClient = kubeConfig.makeApiClient(api);
+                    this._kindToGroupVersion[resourceName] = resourceList.groupVersion;
+                }
+            }),
+            this._forEachApiGroup(kubeConfig, (apiClient, apiGroup) => {
+                for (const entry of apiGroup.versions) {
+                    this._groupVersionToPreferredVersion[entry.groupVersion] = apiGroup.preferredVersion.groupVersion;
+                }
+            })
+        ]);
+    };
 
-        const fetchResources = apiClient[resourceFunctionName];
+    _clientApis(kind) {
+        return this._kindToApiClients[kind.toLowerCase()] || [];
+    }
 
-        if (typeof fetchResources === 'function') {
+    _clientApi(apiVersion) {
+        return this._apiVersionToApiClient[apiVersion.toLowerCase()] || null;
+    }
 
+    async _forEachApiGroup(kubeConfig, callback) {
+        await this._forEachApi(kubeConfig, 'getAPIGroup', callback);
+    }
+
+    async _forEachApiResourceList(kubeConfig, callback) {
+        await this._forEachApi(kubeConfig, 'getAPIResources', callback);
+    }
+
+    async _forEachApi(kubeConfig, resourceFunctionName, callback) {
+        for (const api of k8s.APIS) {
+
+            const apiClient = kubeConfig.makeApiClient(api);
+
+            const fetchResources = apiClient[resourceFunctionName];
+
+            if (typeof fetchResources === 'function') {
+
+                try {
+                    const {response: {body}} = await fetchResources.bind(apiClient)();
+
+                    callback(apiClient, k8sManifest(body));
+                } catch (e) {
+
+                    const {response: {statusCode}} = e;
+                    if (statusCode !== 404) {
+                        throw e;
+                    }
+                }
+            }
+        }
+    }
+
+    static preferredVersion(kind) {
+
+        const kindGroup = this._kindToGroupVersion[kind.toLowerCase()];
+
+        if (!kindGroup) {
+            throw new Error(`The kind ${kind} didn't have a registered group version.`);
+        }
+
+        const targetVersion = this._groupVersionToPreferredVersion[kindGroup];
+
+        if (!targetVersion) {
+            throw new Error(`The kind ${kind} didn't have a registered preferred version. Received: ${version}`);
+        }
+
+        return targetVersion;
+    }
+
+    async createAll(manifests) {
+        return Promise.all(manifests.map(async(manifest) => {
             try {
-                const {response: {body}} = await fetchResources.bind(apiClient)();
-
-                callback(apiClient, k8sManifest(body));
+                await this._creationStrategy(manifest)();
             } catch (e) {
 
                 const {response: {statusCode}} = e;
-                if (statusCode !== 404) {
+                if (statusCode !== 409) {
                     throw e;
                 }
             }
-        }
-    }
-};
-
-const preferredVersion = (kind) => {
-
-    const kindGroup = kindToGroupVersion[kind.toLowerCase()];
-
-    if (!kindGroup) {
-        throw new Error(`The kind ${kind} didn't have a registered group version.`);
+        }));
     }
 
-    const targetVersion = groupVersionToPreferredVersion[kindGroup];
-
-    if (!targetVersion) {
-        throw new Error(`The kind ${kind} didn't have a registered preferred version. Received: ${version}`);
+    async deleteAll(manifests) {
+        return Promise.all(manifests.map(async (manifest) => await this._deletionStrategy(manifest)()));
     }
 
-    return targetVersion;
-};
+    async listAll(kind, namespace) {
+        console.log(`Listing all objects with kind ${kind}${ !!namespace ? ` in namespace ${namespace}`: ``}.`);
+        const responses = await this._listAllStrategy(kind, namespace)();
 
-const createAll = async (manifests) => {
-    return Promise.all(manifests.map(async(manifest) => {
-        try {
-            await creationStrategy(manifest)();
-        } catch (e) {
+        console.log(`List all response:\n\n${JSON.stringify(responses)}`);
 
-            const {response: {statusCode}} = e;
-            if (statusCode !== 409) {
-                throw e;
+        return Promise.all(responses.map((data) => {
+
+            const {response: {body}} = data;
+
+            if (!body) {
+                throw new Error(`The API response didn't include a valid body. Received: ${body}`);
             }
+
+            console.log(`In List all.\n\nReceived body:\n\n${JSON.stringify(body)}`);
+
+            if (!body.apiVersion) {
+                body.apiVersion = K8sApi.preferredVersion(body.kind);
+                console.log(`Set api version to ${body.apiVersion} for object ${body.kind}`);
+            }
+
+            return k8sManifest(body);
+        }));
+    }
+
+    _listAllStrategy(prospectiveKind, namespace) {
+
+        const kind = k8sKind(prospectiveKind.toLowerCase());
+        const apis = this._clientApis(kind);
+
+        console.log(`Client APIs returned:\n\n${JSON.stringify(apis)}`);
+        const fetchAllData = async (listOperations) => Promise.all(listOperations.map(async (listOperation) =>  {
+            console.log(`Running listing operation.\n\n`)
+            const result = await listOperation();
+
+            console.log(`Result of list:\n\n${JSON.stringify(result)}`);
+
+            return result;
+        }));
+
+        let listOperations = [];
+        for (const api of apis) {
+
+            let listOperation = null;
+            if (!namespace && api[`list${kind}ForAllNamespaces`]) {
+
+                listOperation = api[`list${kind}ForAllNamespaces`].bind(api);
+            } else if (api[`listNamespaced${kind}`] && !!namespace) {
+
+                listOperation = api[`listNamespaced${kind}`].bind(api, namespace);
+            } else {
+
+                const namespaceText = namespace ? `and namespace ${namespace}` : ``;
+
+                throw new Error(`
+                    The list all function for kind ${kind} ${namespaceText} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
+                `)
+            }
+
+            listOperations.push(listOperation);
         }
-    }));
-}
 
-const deleteAll = async (manifests) => {
-    return Promise.all(manifests.map(async (manifest) => await deletionStrategy(manifest)()));
-}
+        console.log(`List operations:\n\n${listOperations}`);
 
-const listAll = async (kind, namespace) => {
-    console.log(`Listing all objects with kind ${kind}${ !!namespace ? ` in namespace ${namespace}`: ``}.`);
-    const responses = await listAllStrategy(kind, namespace)();
+        return fetchAllData.bind(listOperations);
+    }
 
-    console.log(`List all response:\n\n${JSON.stringify(responses)}`);
+    _creationStrategy(manifest) {
 
-    return Promise.all(responses.map((data) => {
+        const kind = k8sKind(manifest.kind.toLowerCase());
 
-        const {response: {body}} = data;
+        console.log(`Fetching api strategy for api ${manifest.apiVersion}`);
+        const api = this._clientApi(manifest.apiVersion);
+        if (api[`createNamespaced${kind}`]) {
 
-        if (!body) {
-            throw new Error(`The API response didn't include a valid body. Received: ${body}`);
-        }
+            return api[`createNamespaced${kind}`].bind(api, manifest.metadata.namespace, manifest);
+        } else if (api[`create${kind}`]) {
 
-        console.log(`In List all.\n\nReceived body:\n\n${JSON.stringify(body)}`);
-
-        if (!body.apiVersion) {
-            body.apiVersion = preferredVersion(body.kind);
-            console.log(`Set api version to ${body.apiVersion} for object ${body.kind}`);
-        }
-
-        return k8sManifest(body);
-    }));
-}
-
-const listAllStrategy = (prospectiveKind, namespace) => {
-
-    const kind = k8sKind(prospectiveKind.toLowerCase());
-    const apis = clientApis(kind);
-
-    console.log(`Client APIs returned:\n\n${JSON.stringify(apis)}`);
-    const fetchAllData = async (listOperations) => Promise.all(listOperations.map(async (listOperation) =>  {
-        console.log(`Running listing operation.\n\n`)
-        const result = await listOperation();
-
-        console.log(`Result of list:\n\n${JSON.stringify(result)}`);
-
-        return result;
-    }));
-
-    let listOperations = [];
-    for (const api of apis) {
-
-        let listOperation = null;
-        if (!namespace && api[`list${kind}ForAllNamespaces`]) {
-
-            listOperation = api[`list${kind}ForAllNamespaces`].bind(api);
-        } else if (api[`listNamespaced${kind}`] && !!namespace) {
-
-            listOperation = api[`listNamespaced${kind}`].bind(api, namespace);
+            return api[`create${kind}`].bind(api, manifest);
         } else {
-
-            const namespaceText = namespace ? `and namespace ${namespace}` : ``;
-
             throw new Error(`
-                The list all function for kind ${kind} ${namespaceText} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
+                The creation function for kind ${kind} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
             `)
         }
-
-        listOperations.push(listOperation);
     }
 
-    console.log(`List operations:\n\n${listOperations}`);
+    _deletionStrategy(manifest) {
 
-    return fetchAllData.bind(listOperations);
-}
+        const kind = k8sKind(manifest.kind.toLowerCase());
+        const api = this._clientApi(manifest.apiVersion);
+        if (api[`deleteNamespaced${kind}`]) {
 
-const creationStrategy = (manifest) => {
+            return api[`deleteNamespaced${kind}`].bind(api, manifest.metadata.name, manifest.metadata.namespace);
+        } else if (api[`delete${kind}`]) {
 
-    const kind = k8sKind(manifest.kind.toLowerCase());
-
-    console.log(`Fetching api strategy for api ${manifest.apiVersion}`);
-    const api = clientApi(manifest.apiVersion);
-    if (api[`createNamespaced${kind}`]) {
-
-        return api[`createNamespaced${kind}`].bind(api, manifest.metadata.namespace, manifest);
-    } else if (api[`create${kind}`]) {
-
-        return api[`create${kind}`].bind(api, manifest);
-    } else {
-        throw new Error(`
-            The creation function for kind ${kind} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
-        `)
+            return api[`delete${kind}`].bind(api, manifest.metadata.name);
+        } else {
+            throw new Error(`
+                The deletion function for kind ${kind} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
+            `)
+        }
     }
-}
+};
 
-const deletionStrategy = (manifest) => {
 
-    const kind = k8sKind(manifest.kind.toLowerCase());
-    const api = clientApi(manifest.apiVersion);
-    if (api[`deleteNamespaced${kind}`]) {
 
-        return api[`deleteNamespaced${kind}`].bind(api, manifest.metadata.name, manifest.metadata.namespace);
-    } else if (api[`delete${kind}`]) {
-
-        return api[`delete${kind}`].bind(api, manifest.metadata.name);
-    } else {
-        throw new Error(`
-            The deletion function for kind ${kind} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
-        `)
-    }
-}
-
-export default { init, createAll, listAll, deleteAll };
+export default { K8sApi };

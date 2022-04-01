@@ -1,5 +1,5 @@
 import k8s from '@kubernetes/client-node';
-import k8sApi from './k8s-api.mjs';
+import {k8sApi} from './k8s-api.mjs';
 import {K8sObjectHandle} from './k8s-object-handle.mjs';
 import {k8sManifest, stringify} from './k8s-manifest.mjs';
 import yaml from "yaml";
@@ -9,17 +9,18 @@ class K8sClient {
     constructor() {
         this._kubeConfig = new k8s.KubeConfig();
         this._kubeConfig.loadFromCluster();
+        this._api = new k8sApi(this._kubeConfig);
     }
 
     async create (yamlString) {
 
-        await k8sApi.init(this._kubeConfig);
+        await this._api.init(this._kubeConfig);
 
         const parsedYaml = yaml.parse(yamlString);
 
         const manifest = k8sManifest(parsedYaml);
 
-        await k8sApi.createAll([manifest]);
+        await this._api.createAll([manifest]);
 
         return new K8sObjectHandle(manifest);
     }
@@ -30,7 +31,7 @@ class K8sClient {
 
     async get(kind, name, namespace) {
 
-        await k8sApi.init(this._kubeConfig);
+        await this._api.init(this._kubeConfig);
 
         const handles = await this.getAll(kind, namespace);
 
@@ -52,9 +53,9 @@ class K8sClient {
 
     async getAll(kind, namespace) {
 
-        await k8sApi.init(this._kubeConfig);
+        await this._api.init(this._kubeConfig);
 
-        const resources = await k8sApi.listAll(kind, namespace);
+        const resources = await this._api.listAll(kind, namespace);
 
         let targets = [];
         for (const resource of resources) {
@@ -68,9 +69,9 @@ class K8sClient {
     }
 
     async delete (k8sObjectHandle) {
-        await k8sApi.init(this._kubeConfig);
+        await this._api.init(this._kubeConfig);
 
-        return k8sApi.deleteAll([k8sObjectHandle.manifest]);
+        return this._api.deleteAll([k8sObjectHandle.manifest]);
     }
 }
 
