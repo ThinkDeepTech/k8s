@@ -20,10 +20,6 @@ class K8sApi {
 
             console.log(`Initializing api version to client map.`)
             await this._initApiVersionToApiClientMap(kubeConfig);
-
-            console.log(`kind to group version Map:\n\n${JSON.stringify(this._kindToGroupVersion)}\n\n`);
-
-            console.log(`group version to preferred map:\n\n${JSON.stringify(this._groupVersionToPreferredVersion)}`);
         }
     };
 

@@ -18,6 +18,7 @@ const k8sKind = (prospectiveKind) => {
     }
 
     const versionlessKind = removeVersion(prospectiveKind)
+    console.log(`Kind: ${prospectiveKind}, Versionless:\n\n${versionlessKind}`);
 
     const targetKind = kindStringToManifestKindMap[versionlessKind.toLowerCase()] || '';
 
