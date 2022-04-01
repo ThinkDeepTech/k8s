@@ -40,8 +40,8 @@ const k8sManifest = (configuration) => {
     return target;
 };
 
-const stringify = () => {
-    return k8s.dumpYaml(this._obj);
+const stringify = (manifest) => {
+    return k8s.dumpYaml(manifest);
 }
 
 const k8sClientObject = (typeName, value) => {

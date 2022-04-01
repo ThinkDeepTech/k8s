@@ -1,6 +1,6 @@
 import k8s from '@kubernetes/client-node';
 import { k8sKind } from './k8s-kind.mjs';
-import { k8sManifest } from './k8s-manifest.mjs';
+import { k8sManifest, stringify } from './k8s-manifest.mjs';
 
 const init = async (kubeConfig) => {
     if (!initialized()) {
@@ -23,8 +23,6 @@ const initApiVersionToApiClientMap = async (kubeConfig) => {
     await forEachApiResourceList(kubeConfig, (apiClient, resourceList) => {
         apiVersionToApiClient[resourceList.groupVersion.toLowerCase()] = apiClient;
     })
-
-    console.log(`Api Map:\n\n${JSON.stringify(apiVersionToApiClient)}`);
 }
 
 const kindToApiClients = {};
@@ -32,8 +30,11 @@ const kindToPreferredVersion = {};
 const initKindMaps = async (kubeConfig) => {
 
     await forEachApiResourceList(kubeConfig, (apiClient, resourceList) => {
+
+        console.log(`Initializing clients map.\n\n${stringify(resourceList)}`);
         for (const resource of resourceList.resources) {
 
+            console.log(`Handling resource:\n\n${stringify(resource)}`);
             const resourceName = resource.name.toLowerCase();
             if (!kindToApiClients[resourceName]) {
                 kindToApiClients[resourceName] = [];
@@ -73,17 +74,15 @@ const forEachApi = async (kubeConfig, resourceFunctionName, callback) => {
             try {
                 const {response: {body}} = await fetchResources.bind(apiClient)();
 
-                console.log(`API ${resourceFunctionName} response body:\n\n${JSON.stringify(body)}`)
-
-                // TODO: Verify this is correct handling. Are objects not available?
-                if (typeof body !== 'object' && Object.keys(body).length === 0) {
-                    continue;
-                }
-
                 callback(apiClient, k8sManifest(body));
             } catch (e) {
+
+                const {response: {statusCode}} = e;
                 console.log(`An error occurred while fetching resources.\n\n${JSON.stringify(e)}`);
-                continue;
+
+                if (statusCode !== 404) {
+                    throw e;
+                }
             }
         }
     }
@@ -104,10 +103,10 @@ const createAll = async (manifests) => {
         try {
             await creationStrategy(manifest)();
         } catch (e) {
-            console.log(`Creation error object:\n\n${e}`);
 
+            const {response: {statusCode}} = e;
             console.log(`Creation error object stringified: ${JSON.stringify(e)}`);
-            if (e.response.statusCode !== 409) {
+            if (statusCode !== 409) {
                 throw e;
             }
         }
