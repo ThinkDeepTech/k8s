@@ -101,7 +101,6 @@ const createAll = async (manifests) => {
         } catch (e) {
 
             const {response: {statusCode}} = e;
-            console.log(`Creation error object stringified: ${JSON.stringify(e)}`);
             if (statusCode !== 409) {
                 throw e;
             }

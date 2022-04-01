@@ -21,8 +21,6 @@ class K8sClient {
 
         await k8sApi.createAll([manifest]);
 
-        console.log(`Created object:\n\n${stringify(manifest)}`);
-
         return new K8sObjectHandle(manifest);
     }
 
