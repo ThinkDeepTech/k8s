@@ -160,7 +160,7 @@ class K8sApi {
         }));
     }
 
-    _listAllStrategies(prospectiveKind, namespace) {
+    _listAllStrategy(prospectiveKind, namespace) {
 
         const kind = k8sKind(prospectiveKind.toLowerCase());
         const apis = this._clientApis(kind);
