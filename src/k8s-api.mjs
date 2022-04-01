@@ -197,8 +197,6 @@ class K8sApi {
             listOperations.push(listOperation);
         }
 
-        console.log(`List operations:\n\n${listOperations}`);
-
         return fetchAllData.bind(listOperations);
     }
 

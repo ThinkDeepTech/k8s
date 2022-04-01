@@ -35,8 +35,6 @@ class K8sClient {
 
         const handles = await this.getAll(kind, namespace);
 
-        console.log(`Fetched handles:\n\n${JSON.stringify(handles)}`);
-
         let target = null;
         for (const handle of handles) {
 
