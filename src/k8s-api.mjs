@@ -165,16 +165,6 @@ class K8sApi {
         const kind = k8sKind(prospectiveKind.toLowerCase());
         const apis = this._clientApis(kind);
 
-        console.log(`Client APIs returned:\n\n${JSON.stringify(apis)}`);
-        const fetchAllData = async (listOperations) => Promise.all(listOperations.map(async (listOperation) =>  {
-            console.log(`Running listing operation.\n\n`)
-            const result = await listOperation();
-
-            console.log(`Result of list:\n\n${JSON.stringify(result)}`);
-
-            return result;
-        }));
-
         let listOperations = [];
         for (const api of apis) {
 
@@ -197,7 +187,16 @@ class K8sApi {
             listOperations.push(listOperation);
         }
 
-        return fetchAllData.bind(listOperations);
+        const fetchAllData = async (listOperations) => listOperations.map(async (listOperation) =>  {
+            console.log(`Running listing operation.\n\n`)
+            const result = await listOperation();
+
+            console.log(`Result of list:\n\n${JSON.stringify(result)}`);
+
+            return result;
+        });
+
+        return fetchAllData.bind(this, listOperations);
     }
 
     _creationStrategy(manifest) {
