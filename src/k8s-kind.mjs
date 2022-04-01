@@ -18,9 +18,10 @@ const k8sKind = (prospectiveKind) => {
     }
 
     const versionlessKind = removeVersion(prospectiveKind)
-    console.log(`Kind: ${prospectiveKind}, Versionless:\n\n${versionlessKind}`);
 
     const targetKind = kindStringToManifestKindMap[versionlessKind.toLowerCase()] || '';
+
+    console.log(`Kind: ${prospectiveKind}, Versionless: ${versionlessKind}, Target: ${targetKind}`);
 
     if (!targetKind) {
         throw new Error(`The kind ${prospectiveKind} wasn't found in the k8s client library. Are you sure you supplied an accepted kind?`);
