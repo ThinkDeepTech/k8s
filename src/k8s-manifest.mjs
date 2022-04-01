@@ -1,28 +1,16 @@
 import k8s from "@kubernetes/client-node";
 import { capitalizeFirstLetter } from "./capitalize-first-letter.mjs";
 import { k8sKind } from "./k8s-kind.mjs";
-import { mapKindToApiVersion } from "./map-kind-to-api-version.mjs";
 
 const k8sManifest = (configuration) => {
 
-    let target = null;
-    if (!!configuration?.constructor?.name && clientObjectType(configuration.constructor.name)) {
-
-        configuration.kind = k8sKind(configuration.constructor.name);
-
-        // TODO: Use dynamically determined preferred API version.
-        configuration.apiVersion = mapKindToApiVersion(configuration.kind);
-        target = configuration;
-    } else {
-
-        if (!configuration.apiVersion) {
-            configuration.apiVersion = configuration.groupVersion;
-        }
-        const objectPrefix = objectVersion(configuration.apiVersion);
-        const objectKind = k8sKind(configuration.kind);
-
-        target = k8sClientObject(`${objectPrefix}${objectKind}`, configuration);
+    if (!configuration.apiVersion) {
+        configuration.apiVersion = configuration.groupVersion;
     }
+
+    const objectPrefix = objectVersion(configuration.apiVersion);
+    const objectKind = k8sKind(configuration.kind);
+    const target = k8sClientObject(`${objectPrefix}${objectKind}`, configuration);
 
     if (!target.apiVersion) {
         throw new Error(`${this.apiVersion} wasn't recognized as a valid API version. Are you sure you spelled it correctly?`);

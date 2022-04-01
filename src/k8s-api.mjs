@@ -15,11 +15,11 @@ class K8sApi {
 
     async init(kubeConfig) {
         if (!this.initialized()) {
-            console.log(`Initializing kind maps.`)
-            await this._initKindMaps(kubeConfig);
-
-            console.log(`Initializing api version to client map.`)
-            await this._initApiVersionToApiClientMap(kubeConfig);
+            await Promise.all([
+                this._initKindMaps(kubeConfig),
+                this._initApiVersionToApiClientMap(kubeConfig)
+            ]);
+            console.log(`Initialized the k8s api.`);
         }
     };
 
@@ -29,7 +29,6 @@ class K8sApi {
     }
 
     async _initApiVersionToApiClientMap(kubeConfig) {
-
         await this._forEachApiResourceList(kubeConfig, (apiClient, resourceList) => {
             this._apiVersionToApiClient[resourceList.groupVersion.toLowerCase()] = apiClient;
         })
@@ -100,7 +99,7 @@ class K8sApi {
         }
     }
 
-    static preferredVersion(kind) {
+    preferredVersion(kind) {
 
         const kindGroup = this._kindToGroupVersion[kind.toLowerCase()];
 
@@ -132,14 +131,12 @@ class K8sApi {
     }
 
     async deleteAll(manifests) {
-        return Promise.all(manifests.map(async (manifest) => await this._deletionStrategy(manifest)()));
+        return Promise.all(manifests.map((manifest) => this._deletionStrategy(manifest)()));
     }
 
     async listAll(kind, namespace) {
         console.log(`Listing all objects with kind ${kind}${ !!namespace ? ` in namespace ${namespace}`: ``}.`);
         const responses = await this._listAllStrategy(kind, namespace)();
-
-        console.log(`List all response:\n\n${JSON.stringify(responses)}`);
 
         return Promise.all(responses.map((data) => {
 
@@ -149,10 +146,8 @@ class K8sApi {
                 throw new Error(`The API response didn't include a valid body. Received: ${body}`);
             }
 
-            console.log(`In List all.\n\nReceived body:\n\n${JSON.stringify(body)}`);
-
             if (!body.apiVersion) {
-                body.apiVersion = K8sApi.preferredVersion(body.kind);
+                body.apiVersion = this.preferredVersion(body.kind);
                 console.log(`Set api version to ${body.apiVersion} for object ${body.kind}`);
             }
 
@@ -168,7 +163,7 @@ class K8sApi {
         let listOperations = [];
         for (const api of apis) {
 
-            let listOperation = null;
+            let listOperation = () => { };
             if (!namespace && api[`list${kind}ForAllNamespaces`]) {
 
                 listOperation = api[`list${kind}ForAllNamespaces`].bind(api);
