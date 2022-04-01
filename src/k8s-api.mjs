@@ -207,18 +207,30 @@ class K8sApi {
     _deletionStrategy(manifest) {
 
         const kind = k8sKind(manifest.constructor.name.toLowerCase());
-        const api = this._clientApi(manifest.apiVersion);
-        if (api[`deleteNamespaced${kind}`]) {
+        const apis = this._clientApis(kind);
 
-            return api[`deleteNamespaced${kind}`].bind(api, manifest.metadata.name, manifest.metadata.namespace);
-        } else if (api[`delete${kind}`]) {
+        let strategies = []
+        for (const api of apis) {
 
-            return api[`delete${kind}`].bind(api, manifest.metadata.name);
-        } else {
-            throw new Error(`
-                The deletion function for kind ${kind} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
-            `)
+            let strategy = null;
+            if (api[`deleteNamespaced${kind}`]) {
+
+                strategy = api[`deleteNamespaced${kind}`].bind(api, manifest.metadata.name, manifest.metadata.namespace);
+            } else if (api[`delete${kind}`]) {
+
+                strategy = api[`delete${kind}`].bind(api, manifest.metadata.name);
+            } else {
+                throw new Error(`
+                    The deletion function for kind ${kind} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
+                `)
+            }
+
+            strategies.push(strategy);
         }
+
+        const issueDeleteToAllApis = (strategies) => Promise.all(strategies.map((strategy) =>  strategy()));
+
+        return issueDeleteToAllApis.bind(null, strategies);
     }
 };
 
