@@ -42,14 +42,14 @@ class K8sApi {
 
                 for (const resource of resourceList.resources) {
 
-                    const resourceName = resource.name.toLowerCase();
-                    if (!this._kindToApiClients[resourceName]) {
-                        this._kindToApiClients[resourceName] = [];
+                    const resourceKind = resource.kind.toLowerCase();
+                    if (!this._kindToApiClients[resourceKind]) {
+                        this._kindToApiClients[resourceKind] = [];
                     }
 
-                    this._kindToApiClients[resourceName].push(apiClient);
+                    this._kindToApiClients[resourceKind].push(apiClient);
 
-                    this._kindToGroupVersion[resourceName] = resourceList.groupVersion;
+                    this._kindToGroupVersion[resourceKind] = resourceList.groupVersion;
                 }
             }),
             this._forEachApiGroup(kubeConfig, (apiClient, apiGroup) => {
