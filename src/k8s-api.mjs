@@ -25,8 +25,9 @@ const initApiVersionToApiClientMap = async (kubeConfig) => {
     })
 }
 
-const kindToApiClients = {};
-const kindToPreferredVersion = {};
+var kindToApiClients = {};
+var kindToGroupVersion = {};
+var groupVersionToPreferredVersion = {};
 const initKindMaps = async (kubeConfig) => {
 
     await forEachApiResourceList(kubeConfig, (apiClient, resourceList) => {
@@ -40,12 +41,19 @@ const initKindMaps = async (kubeConfig) => {
 
             kindToApiClients[resourceName].push(apiClient);
 
-            console.log(`Added entry for resource ${resourceName}\n\nResource value\n${JSON.stringify(resource)}\n\nMap Value\n${JSON.stringify(kindToApiClients[resourceName])}`);
-            kindToPreferredVersion[resourceName] = `${resource.group}/${resource.version}`;
+            kindToGroupVersion[resourceName] = resourceList.groupVersion;
         }
     });
 
-    console.log(`Preferred version Map:\n\n${JSON.stringify(kindToPreferredVersion)}\n\n`);
+    await forEachApiGroup(kubeConfig, (apiClient, apiGroup) => {
+        for (const entry of apiGroup.versions) {
+            groupVersionToPreferredVersion[entry.groupVersion] = apiGroup.preferredVersion.groupVersion;
+        }
+    });
+
+    console.log(`kind to group version Map:\n\n${JSON.stringify(kindToGroupVersion)}\n\n`);
+
+    console.log(`group version to preferred map:\n\n${JSON.stringify(groupVersionToPreferredVersion)}`);
 };
 
 const clientApis = (kind) => {
@@ -54,6 +62,10 @@ const clientApis = (kind) => {
 
 const clientApi = (apiVersion) => {
     return apiVersionToApiClient[apiVersion.toLowerCase()] || null;
+}
+
+const forEachApiGroup = async (kubeConfig, callback) => {
+    await forEachApi(kubeConfig, 'getAPIGroup', callback);
 }
 
 const forEachApiResourceList = async (kubeConfig, callback) => {
@@ -85,13 +97,20 @@ const forEachApi = async (kubeConfig, resourceFunctionName, callback) => {
 };
 
 const preferredVersion = (kind) => {
-    const version = kindToPreferredVersion[kind.toLowerCase()];
 
-    if (!version) {
+    const kindGroup = kindToGroupVersion[kind.toLowerCase()];
+
+    if (!kindGroup) {
+        throw new Error(`The kind ${kind} didn't have a registered group version.`);
+    }
+
+    const targetVersion = groupVersionToPreferredVersion[kindGroup];
+
+    if (!targetVersion) {
         throw new Error(`The kind ${kind} didn't have a registered preferred version. Received: ${version}`);
     }
 
-    return version;
+    return targetVersion;
 };
 
 const createAll = async (manifests) => {
