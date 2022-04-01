@@ -1,6 +1,6 @@
 import k8s from '@kubernetes/client-node';
 import { k8sKind } from './k8s-kind.mjs';
-import { k8sManifest, stringify } from './k8s-manifest.mjs';
+import { k8sManifest } from './k8s-manifest.mjs';
 
 const init = async (kubeConfig) => {
     if (!initialized()) {
@@ -9,12 +9,16 @@ const init = async (kubeConfig) => {
 
         console.log(`Initializing api version to client map.`)
         await initApiVersionToApiClientMap(kubeConfig);
+
+        console.log(`kind to group version Map:\n\n${JSON.stringify(kindToGroupVersion)}\n\n`);
+
+        console.log(`group version to preferred map:\n\n${JSON.stringify(groupVersionToPreferredVersion)}`);
     }
 };
 
 const initialized = () => {
     return (Object.keys(apiVersionToApiClient).length > 0) && (Object.keys(kindToApiClients).length > 0)
-        && (Object.keys(kindToPreferredVersion).length > 0);
+        && (Object.keys(kindToGroupVersion).length > 0) && (Object.keys(groupVersionToPreferredVersion).length > 0);
 }
 
 const apiVersionToApiClient = { };
@@ -25,35 +29,32 @@ const initApiVersionToApiClientMap = async (kubeConfig) => {
     })
 }
 
-var kindToApiClients = {};
-var kindToGroupVersion = {};
-var groupVersionToPreferredVersion = {};
+const kindToApiClients = {};
+const kindToGroupVersion = {};
+const groupVersionToPreferredVersion = {};
 const initKindMaps = async (kubeConfig) => {
 
-    await forEachApiResourceList(kubeConfig, (apiClient, resourceList) => {
+    return Promise.all([
+        forEachApiResourceList(kubeConfig, (apiClient, resourceList) => {
 
-        for (const resource of resourceList.resources) {
+            for (const resource of resourceList.resources) {
 
-            const resourceName = resource.name.toLowerCase();
-            if (!kindToApiClients[resourceName]) {
-                kindToApiClients[resourceName] = [];
+                const resourceName = resource.name.toLowerCase();
+                if (!kindToApiClients[resourceName]) {
+                    kindToApiClients[resourceName] = [];
+                }
+
+                kindToApiClients[resourceName].push(apiClient);
+
+                kindToGroupVersion[resourceName] = resourceList.groupVersion;
             }
-
-            kindToApiClients[resourceName].push(apiClient);
-
-            kindToGroupVersion[resourceName] = resourceList.groupVersion;
-        }
-    });
-
-    await forEachApiGroup(kubeConfig, (apiClient, apiGroup) => {
-        for (const entry of apiGroup.versions) {
-            groupVersionToPreferredVersion[entry.groupVersion] = apiGroup.preferredVersion.groupVersion;
-        }
-    });
-
-    console.log(`kind to group version Map:\n\n${JSON.stringify(kindToGroupVersion)}\n\n`);
-
-    console.log(`group version to preferred map:\n\n${JSON.stringify(groupVersionToPreferredVersion)}`);
+        }),
+        forEachApiGroup(kubeConfig, (apiClient, apiGroup) => {
+            for (const entry of apiGroup.versions) {
+                groupVersionToPreferredVersion[entry.groupVersion] = apiGroup.preferredVersion.groupVersion;
+            }
+        })
+    ]);
 };
 
 const clientApis = (kind) => {
