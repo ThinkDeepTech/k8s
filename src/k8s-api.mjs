@@ -111,6 +111,8 @@ const listAll = async (kind, namespace) => {
     console.log(`Listing all objects with kind ${kind}${ !!namespace ? ` in namespace ${namespace}`: ``}.`);
     const responses = listAllStrategy(kind, namespace)();
 
+    console.log(`List all response:\n\n${JSON.stringify(responses)}`);
+
     return Promise.all(responses.map((data) => {
 
         const {response: {body}} = data;
@@ -134,7 +136,16 @@ const listAllStrategy = (prospectiveKind, namespace) => {
 
     const kind = k8sKind(prospectiveKind.toLowerCase());
     const apis = clientApis(kind);
-    const fetchAllData = async (listOperations) => Promise.all(listOperations.map(async (listOperation) => await listOperation()));
+
+    console.log(`Client APIs returned:\n\n${JSON.stringify(apis)}`);
+    const fetchAllData = async (listOperations) => Promise.all(listOperations.map(async (listOperation) =>  {
+        console.log(`Running listing operation.\n\n`)
+        const result = await listOperation();
+
+        console.log(`Result of list:\n\n${JSON.stringify(result)}`);
+
+        return result;
+    }));
 
     let listOperations = [];
     for (const api of apis) {
@@ -157,6 +168,8 @@ const listAllStrategy = (prospectiveKind, namespace) => {
 
         listOperations.push(listOperation);
     }
+
+    console.log(`List operations:\n\n${listOperations}`);
 
     return fetchAllData.bind(listOperations);
 }
