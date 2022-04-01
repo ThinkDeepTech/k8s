@@ -160,7 +160,7 @@ class K8sApi {
         }));
     }
 
-    _listAllStrategy(prospectiveKind, namespace) {
+    _listAllStrategies(prospectiveKind, namespace) {
 
         const kind = k8sKind(prospectiveKind.toLowerCase());
         const apis = this._clientApis(kind);
@@ -187,16 +187,9 @@ class K8sApi {
             listOperations.push(listOperation);
         }
 
-        const fetchAllData = async (listOperations) => listOperations.map(async (listOperation) =>  {
-            console.log(`Running listing operation.\n\n`)
-            const result = await listOperation();
+        const fetchAllData = (listOperations) => Promise.all(listOperations.map((listOperation) =>  listOperation()));
 
-            console.log(`Result of list:\n\n${JSON.stringify(result)}`);
-
-            return result;
-        });
-
-        return fetchAllData.bind(this, listOperations);
+        return fetchAllData.bind(null, listOperations);
     }
 
     _creationStrategy(manifest) {
