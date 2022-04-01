@@ -39,11 +39,11 @@ const initKindMaps = async (kubeConfig) => {
             }
 
             kindToApiClients[resourceName].push(apiClient);
+
+            console.log(`Added entry for resource ${resourceName}\n\nResource value\n${JSON.stringify(resource)}\n\nMap Value\n${JSON.stringify(kindToApiClients[resourceName])}`);
             kindToPreferredVersion[resourceName] = `${resource.group}/${resource.version}`;
         }
     });
-
-    console.log(`Kind Map:\n\n${JSON.stringify(kindToApiClients)}\n\n`);
 
     console.log(`Preferred version Map:\n\n${JSON.stringify(kindToPreferredVersion)}\n\n`);
 };
