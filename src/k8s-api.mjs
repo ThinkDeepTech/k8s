@@ -167,21 +167,7 @@ class K8sApi {
             strategies.push(this._readKindThroughApiStrategy(api, kind, name, namespace));
         }
 
-        const fetchKindFromAllRelevantApis = async (strategies) => (await Promise.all(strategies.map(async (strategy) =>  {
-            try {
-                return await strategy();
-            } catch (e) {
-                const {response: {statusCode}} = e;
-
-                if (statusCode !== 404) {
-                    throw e;
-                }
-
-                return null;
-            }
-        }))).filter((value) => !!value);
-
-        return fetchKindFromAllRelevantApis.bind(null, strategies);
+        return this._handleStrategyExecution.bind(this, strategies);
     }
 
     _readKindThroughApiStrategy(api, kind, name, namespace) {
@@ -220,22 +206,7 @@ class K8sApi {
             strategies.push(this._patchKindThroughApiStrategy(api, kind, manifest));
         }
 
-        const sendPatchToAllKindApis = async (strategies) => (await Promise.all(strategies.map(async (strategy) =>  {
-            try {
-
-                return await strategy();
-            } catch (e) {
-                const {response: {statusCode}} = e;
-
-                if (statusCode !== 404) {
-                    throw e;
-                }
-
-                return null;
-            }
-        }))).filter((value) => !!value);
-
-        return sendPatchToAllKindApis.bind(null, strategies);
+        return this._handleStrategyExecution.bind(this, strategies);
     }
 
     _patchKindThroughApiStrategy(api, kind, manifest) {
@@ -278,7 +249,7 @@ class K8sApi {
             strategies.push(this._listKindThroughApiStrategy(api, kind, namespace));
         }
 
-        const gatherAllKindLists = (strategies) => Promise.all(strategies.map((strategy) =>  strategy()));
+        const gatherAllKindLists = (stgs) => Promise.all(stgs.map((strategy) =>  strategy()));
 
         return gatherAllKindLists.bind(null, strategies);
     }
@@ -303,7 +274,7 @@ class K8sApi {
 
 
     deleteAll(manifests) {
-        return Promise.all(manifests.map(async (manifest) => await this._deletionStrategy(manifest)()));
+        return Promise.all(manifests.map((manifest) => this._deletionStrategy(manifest)()));
     }
 
     _deletionStrategy(manifest) {
@@ -316,19 +287,7 @@ class K8sApi {
             strategies.push(this._deleteKindThroughApiStrategy(api, kind, manifest));
         }
 
-        const sendDeleteToAllKindApis = (strategies) => Promise.all(strategies.map(async (strategy) =>  {
-            try {
-                await strategy();
-            } catch(e) {
-                const {response: {statusCode}} = e;
-
-                if (statusCode !== 404) {
-                    throw e;
-                }
-            }
-        }));
-
-        return sendDeleteToAllKindApis.bind(null, strategies);
+        return this._handleStrategyExecution.bind(this, strategies);
     }
 
     _deleteKindThroughApiStrategy(api, kind, manifest) {
@@ -343,6 +302,22 @@ class K8sApi {
                 The deletion function for kind ${kind} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
             `)
         }
+    }
+
+    async _handleStrategyExecution(strategies) {
+        return (await Promise.all(strategies.map(async (strategy) =>  {
+            try {
+                return await strategy();
+            } catch (e) {
+                const {response: {statusCode}} = e;
+
+                if (statusCode !== 404) {
+                    throw e;
+                }
+
+                return null;
+            }
+        }))).filter((value) => !!value);
     }
 };
 

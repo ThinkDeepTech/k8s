@@ -1,5 +1,4 @@
 import chai, { assert } from 'chai';
-import k8s from '@kubernetes/client-node';
 const expect = chai.expect;
 
 import {k8sManifest} from '../src/k8s-manifest.mjs';

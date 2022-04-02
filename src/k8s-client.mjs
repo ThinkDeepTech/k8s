@@ -1,7 +1,7 @@
 import k8s from '@kubernetes/client-node';
 import {K8sApi} from './k8s-api.mjs';
 import {K8sObjectHandle} from './k8s-object-handle.mjs';
-import {k8sManifest, stringify} from './k8s-manifest.mjs';
+import {k8sManifest} from './k8s-manifest.mjs';
 import yaml from "yaml";
 
 class K8sClient {
