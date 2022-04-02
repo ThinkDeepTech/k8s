@@ -128,73 +128,6 @@ class K8sApi {
         }));
     }
 
-    deleteAll(manifests) {
-        return Promise.all(manifests.map(async (manifest) => {
-            try {
-                await this._deletionStrategy(manifest)()
-            } catch(e) {
-
-                const {response: {statusCode}} = e;
-                if (statusCode !== 404) {
-                    throw e;
-                }
-            }
-        }));
-    }
-
-    listAll(kind, namespace) {
-        console.log(`Listing all objects with kind ${kind}${ !!namespace ? ` in namespace ${namespace}`: ``}.`);
-        const responses = await this._listAllStrategy(kind, namespace)();
-
-        return Promise.all(responses.map((data) => {
-
-            const {response: {body}} = data;
-
-            if (!body) {
-                throw new Error(`The API response didn't include a valid body. Received: ${body}`);
-            }
-
-            if (!body.apiVersion) {
-                body.apiVersion = this.preferredVersion(body.kind);
-                console.log(`Set api version to ${body.apiVersion} for object ${body.kind}`);
-            }
-
-            return k8sManifest(body);
-        }));
-    }
-
-    _listAllStrategy(prospectiveKind, namespace) {
-
-        const kind = k8sKind(prospectiveKind.toLowerCase());
-        const apis = this._clientApis(kind);
-
-        let listOperations = [];
-        for (const api of apis) {
-
-            let listOperation = () => { };
-            if (!namespace && api[`list${kind}ForAllNamespaces`]) {
-
-                listOperation = api[`list${kind}ForAllNamespaces`].bind(api);
-            } else if (api[`listNamespaced${kind}`] && !!namespace) {
-
-                listOperation = api[`listNamespaced${kind}`].bind(api, namespace);
-            } else {
-
-                const namespaceText = namespace ? `and namespace ${namespace}` : ``;
-
-                throw new Error(`
-                    The list all function for kind ${kind} ${namespaceText} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
-                `)
-            }
-
-            listOperations.push(listOperation);
-        }
-
-        const fetchAllData = (listOperations) => Promise.all(listOperations.map((listOperation) =>  listOperation()));
-
-        return fetchAllData.bind(null, listOperations);
-    }
-
     _creationStrategy(manifest) {
 
         const kind = k8sKind(manifest.kind.toLowerCase());
@@ -214,6 +147,120 @@ class K8sApi {
         }
     }
 
+    patchAll(manifests) {
+        const c = new k8s.KubeConfig();
+        c.loadFromCluster();
+        const api = c.makeApiClient(k8s.CoreV1Api);
+
+        api.patch
+        return Promise.all(manifests.map(async(manifest) => {
+            try {
+                const responses = await this._patchStrategy(manifest)();
+                return responses.map((data) => k8sManifest(data.response.body));
+            } catch (e) {
+
+                const {response: {statusCode}} = e;
+                if (statusCode !== 404) {
+                    throw e;
+                }
+            }
+        }));
+    }
+
+    _patchStrategy(manifest) {
+
+        const kind = k8sKind(manifest.constructor.name.toLowerCase());
+
+        const apis = this._clientApis(kind);
+
+        let strategies = [];
+        for (const api of apis) {
+            strategies.push(this._patchKindThroughApiStrategy(api, kind, manifest));
+        }
+
+        const sendPatchToAllKindApis = (strategies) => Promise.all(strategies.map((strategy) =>  strategy()));
+
+        return sendPatchToAllKindApis.bind(null, strategies);
+    }
+
+    _patchKindThroughApiStrategy(api, kind, manifest) {
+        if (api[`patchNamespaced${kind}`]) {
+
+            return api[`patchNamespaced${kind}`].bind(api, manifest.metadata.name, manifest.metadata.namespace, manifest);
+        } else if (api[`patch${kind}`]) {
+
+            return api[`patch${kind}`].bind(api, manifest.metadata.name, manifest);
+        } else {
+            throw new Error(`
+                The patch function for kind ${kind} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
+            `)
+        }
+    }
+
+    listAll(kind, namespace) {
+        console.log(`Listing all objects with kind ${kind}${ !!namespace ? ` in namespace ${namespace}`: ``}.`);
+        const responses = await this._listStrategy(kind, namespace)();
+
+        return Promise.all(responses.map((data) => {
+
+            const {response: {body}} = data;
+
+            if (!body) {
+                throw new Error(`The API response didn't include a valid body. Received: ${body}`);
+            }
+
+            return k8sManifest(body);
+        }));
+    }
+
+    _listStrategy(prospectiveKind, namespace) {
+
+        const kind = k8sKind(prospectiveKind.toLowerCase());
+        const apis = this._clientApis(kind);
+
+        let strategies = [];
+        for (const api of apis) {
+            strategies.push(this._listKindThroughApiStrategy(api, kind, namespace));
+        }
+
+        const gatherAllKindLists = (strategies) => Promise.all(strategies.map((strategy) =>  strategy()));
+
+        return gatherAllKindLists.bind(null, strategies);
+    }
+
+    _listKindThroughApiStrategy(api, kind, namespace) {
+        if (!namespace && api[`list${kind}ForAllNamespaces`]) {
+
+            return api[`list${kind}ForAllNamespaces`].bind(api);
+        } else if (!!namespace && api[`listNamespaced${kind}`]) {
+
+            return api[`listNamespaced${kind}`].bind(api, namespace);
+        } else {
+
+            const namespaceText = namespace ? `and namespace ${namespace}` : ``;
+
+            throw new Error(`
+                The list all function for kind ${kind} ${namespaceText} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
+            `)
+        }
+    }
+
+
+
+    deleteAll(manifests) {
+        return Promise.all(manifests.map(async (manifest) => {
+            try {
+                await this._deletionStrategy(manifest)();
+            } catch(e) {
+
+                const {response: {statusCode}} = e;
+                if (statusCode !== 404) {
+                    throw e;
+                }
+            }
+        }));
+    }
+
     _deletionStrategy(manifest) {
 
         const kind = k8sKind(manifest.constructor.name.toLowerCase());
@@ -221,26 +268,26 @@ class K8sApi {
 
         let strategies = [];
         for (const api of apis) {
-
-            let strategy = null;
-            if (api[`deleteNamespaced${kind}`]) {
-
-                strategy = api[`deleteNamespaced${kind}`].bind(api, manifest.metadata.name, manifest.metadata.namespace);
-            } else if (api[`delete${kind}`]) {
-
-                strategy = api[`delete${kind}`].bind(api, manifest.metadata.name);
-            } else {
-                throw new Error(`
-                    The deletion function for kind ${kind} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
-                `)
-            }
-
-            strategies.push(strategy);
+            strategies.push(this._deleteKindThroughApiStrategy(api, kind, manifest));
         }
 
-        const issueDeleteToAllApis = (strategies) => Promise.all(strategies.map((strategy) =>  strategy()));
+        const sendDeleteToAllKindApis = (strategies) => Promise.all(strategies.map((strategy) =>  strategy()));
 
-        return issueDeleteToAllApis.bind(null, strategies);
+        return sendDeleteToAllKindApis.bind(null, strategies);
+    }
+
+    _deleteKindThroughApiStrategy(api, kind, manifest) {
+        if (api[`deleteNamespaced${kind}`]) {
+
+            return api[`deleteNamespaced${kind}`].bind(api, manifest.metadata.name, manifest.metadata.namespace);
+        } else if (api[`delete${kind}`]) {
+
+            return api[`delete${kind}`].bind(api, manifest.metadata.name);
+        } else {
+            throw new Error(`
+                The deletion function for kind ${kind} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
+            `)
+        }
     }
 };
 

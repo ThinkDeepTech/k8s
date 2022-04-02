@@ -36,7 +36,11 @@ class K8sClient {
 
         await this._api.init(this._kubeConfig);
 
+        if (typeof configuration === 'string') {
+            configuration = await this.create(configuration);
+        }
 
+        await this._api.patchAll([configuration]);
     }
 
     async get(kind, name, namespace) {
@@ -50,7 +54,7 @@ class K8sClient {
 
             if (handle.manifest.metadata.name === name) {
 
-                console.info(`Target resource found:\n\n${stringify(handle.manifest)}`);
+                console.info(`Target resource found:\n\n${handle.toString()}`);
                 target = handle;
                 break;
             }
