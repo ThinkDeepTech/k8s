@@ -147,23 +147,65 @@ class K8sApi {
         }
     }
 
-    patchAll(manifests) {
-        const c = new k8s.KubeConfig();
-        c.loadFromCluster();
-        const api = c.makeApiClient(k8s.CoreV1Api);
+    async read(kind, name, namespace) {
+        const results = await this._readStrategy(kind, name, namespace)();
 
-        api.patch
-        return Promise.all(manifests.map(async(manifest) => {
+        if (results.length === 0) {
+            throw new Error(`The resource of kind ${kind} with name ${name}${ !!namespace ? ` in namespace ${namespace}` : ``} wasn't found.`);
+        }
+
+        return results.map((received) => k8sManifest(received.response.body))[0];
+    }
+
+    _readStrategy(prospectiveKind, name, namespace) {
+        const kind = k8sKind(prospectiveKind.toLowerCase());
+
+        const apis = this._clientApis(kind);
+
+        let strategies = [];
+        for (const api of apis) {
+            strategies.push(this._readKindThroughApiStrategy(api, kind, name, namespace));
+        }
+
+        const fetchKindFromAllRelevantApis = async (strategies) => (await Promise.all(strategies.map(async (strategy) =>  {
             try {
-                const responses = await this._patchStrategy(manifest)();
-                return responses.map((data) => k8sManifest(data.response.body));
+                return await strategy();
             } catch (e) {
-
                 const {response: {statusCode}} = e;
+
                 if (statusCode !== 404) {
                     throw e;
                 }
+
+                return null;
             }
+        }))).filter((value) => !!value);
+
+        return fetchKindFromAllRelevantApis.bind(null, strategies);
+    }
+
+    _readKindThroughApiStrategy(api, kind, name, namespace) {
+
+        if (api[`read${kind}`]) {
+
+            return api[`read${kind}`].bind(api, name);
+        } else if (!!namespace && api[`readNamespaced${kind}`]) {
+
+            return api[`readNamespaced${kind}`].bind(api, name, namespace);
+        } else {
+
+            const namespaceText = namespace ? `and namespace ${namespace}` : ``;
+
+            throw new Error(`
+                The read function for kind ${kind} ${namespaceText} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
+            `)
+        }
+    }
+
+    patchAll(manifests) {
+        return Promise.all(manifests.map(async(manifest) => {
+                const responses = await this._patchStrategy(manifest)();
+                return responses.map((received) => k8sManifest(received.response.body));
         }));
     }
 
@@ -178,7 +220,20 @@ class K8sApi {
             strategies.push(this._patchKindThroughApiStrategy(api, kind, manifest));
         }
 
-        const sendPatchToAllKindApis = (strategies) => Promise.all(strategies.map((strategy) =>  strategy()));
+        const sendPatchToAllKindApis = async (strategies) => (await Promise.all(strategies.map(async (strategy) =>  {
+            try {
+
+                return await strategy();
+            } catch (e) {
+                const {response: {statusCode}} = e;
+
+                if (statusCode !== 404) {
+                    throw e;
+                }
+
+                return null;
+            }
+        }))).filter((value) => !!value);
 
         return sendPatchToAllKindApis.bind(null, strategies);
     }
@@ -197,7 +252,7 @@ class K8sApi {
         }
     }
 
-    listAll(kind, namespace) {
+    async listAll(kind, namespace) {
         console.log(`Listing all objects with kind ${kind}${ !!namespace ? ` in namespace ${namespace}`: ``}.`);
         const responses = await this._listStrategy(kind, namespace)();
 
@@ -240,7 +295,7 @@ class K8sApi {
             const namespaceText = namespace ? `and namespace ${namespace}` : ``;
 
             throw new Error(`
-                The list all function for kind ${kind} ${namespaceText} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
+                The list function for kind ${kind} ${namespaceText} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
             `)
         }
     }
@@ -248,17 +303,7 @@ class K8sApi {
 
 
     deleteAll(manifests) {
-        return Promise.all(manifests.map(async (manifest) => {
-            try {
-                await this._deletionStrategy(manifest)();
-            } catch(e) {
-
-                const {response: {statusCode}} = e;
-                if (statusCode !== 404) {
-                    throw e;
-                }
-            }
-        }));
+        return Promise.all(manifests.map(async (manifest) => await this._deletionStrategy(manifest)()));
     }
 
     _deletionStrategy(manifest) {
@@ -271,7 +316,17 @@ class K8sApi {
             strategies.push(this._deleteKindThroughApiStrategy(api, kind, manifest));
         }
 
-        const sendDeleteToAllKindApis = (strategies) => Promise.all(strategies.map((strategy) =>  strategy()));
+        const sendDeleteToAllKindApis = (strategies) => Promise.all(strategies.map(async (strategy) =>  {
+            try {
+                await strategy();
+            } catch(e) {
+                const {response: {statusCode}} = e;
+
+                if (statusCode !== 404) {
+                    throw e;
+                }
+            }
+        }));
 
         return sendDeleteToAllKindApis.bind(null, strategies);
     }

@@ -40,27 +40,16 @@ class K8sClient {
             configuration = await this.create(configuration);
         }
 
-        await this._api.patchAll([configuration]);
+        await this._api.patchAll([configuration.manifest]);
     }
 
     async get(kind, name, namespace) {
 
         await this._api.init(this._kubeConfig);
 
-        const handles = await this.getAll(kind, namespace);
+        const manifest = this._api.read(kind, name, namespace);
 
-        let target = null;
-        for (const handle of handles) {
-
-            if (handle.manifest.metadata.name === name) {
-
-                console.info(`Target resource found:\n\n${handle.toString()}`);
-                target = handle;
-                break;
-            }
-        }
-
-        return target;
+        return new K8sObjectHandle(manifest);
     }
 
     async getAll(kind, namespace) {
