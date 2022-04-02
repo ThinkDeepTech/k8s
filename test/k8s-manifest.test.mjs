@@ -1,123 +1,88 @@
 import chai, { assert } from 'chai';
-import k8s from '@kubernetes/client-node';
 const expect = chai.expect;
 
 import {k8sManifest} from '../src/k8s-manifest.mjs';
 
 describe('k8s-manifest', () => {
 
-    describe('constructor', () => {
 
-        it('should correctly map k8s client objects when supplied as configurations', () => {
-            const configuration = new k8s.V1Pod();
-            configuration.apiVersion = 'dummyversion';
-
-            const subject = k8sManifest(configuration);
-
-            expect(subject.constructor.name).to.include('Pod');
-            expect(subject.kind).to.equal('Pod');
-        })
-
-        it('should correctly map beta k8s client objects when supplied as configurations', () => {
-            const configuration = new k8s.V1beta1ClusterRole();
-            configuration.apiVersion = 'dummyversion';
-
-            const subject = k8sManifest(configuration);
-
-            expect(subject.constructor.name).to.include('ClusterRole');
-            expect(subject.kind).to.equal('ClusterRole');
-        })
-
-        it('should correctly map alpha k8s client objects when supplied as configurations', () => {
-            const configuration = new k8s.V1alpha1ClusterRole();
-            configuration.apiVersion = 'dummyversion';
-
-            const subject = k8sManifest(configuration);
-
-            expect(subject.constructor.name).to.include('ClusterRole');
-            expect(subject.kind).to.equal('ClusterRole');
-        })
-
-        it('should correctly map yaml objects when supplied as configuration', () => {
-            const configuration = {
-                apiVersion: 'v1',
-                kind: 'Pod',
-                metadata: {
-                    name: 'sample-pod'
-                }
-            };
-
-            const subject = k8sManifest(configuration);
-
-            expect(subject.constructor.name).to.include('Pod');
-        })
-
-        it('should correctly map api resource list objects when supplied as configuration', () => {
-            const configuration = {
-                "kind":"APIResourceList",
-                "groupVersion":"v1",
-                "resources":[{
-                    "name":"bindings",
-                    "singularName":"",
-                    "namespaced":true,
-                    "kind":"Binding",
-                    "verbs":["create"]
-                },{
-                    "name":"componentstatuses",
-                    "singularName":"",
-                    "namespaced":false,
-                    "kind":"ComponentStatus",
-                    "verbs":["get","list"],
-                    "shortNames":["cs"]
-                },{
-                    "name":"configmaps",
-                    "singularName":"",
-                    "namespaced":true,
-                    "kind":"ConfigMap",
-                    "verbs":["create","delete","deletecollection","get","list","patch","update","watch"],
-                    "shortNames":["cm"],"storageVersionHash":"qFsyl6wFWjQ="
-                },{
-                    "name":"endpoints",
-                    "singularName":"",
-                    "namespaced":true,
-                    "kind":"Endpoints",
-                    "verbs":["create","delete","deletecollection","get","list","patch","update","watch"],
-                    "shortNames":["ep"],
-                    "storageVersionHash":"fWeeMqaN/OA="
-                },{
-                    "name":"events",
-                    "singularName":"",
-                    "namespaced":true,
-                    "kind":"Event",
-                    "verbs":["create","delete","deletecollection","get","list","patch","update","watch"],
-                    "shortNames":["ev"],
-                    "storageVersionHash":"r2yiGXH7wu8="
-                }]};
-
-            const subject = k8sManifest(configuration);
-
-            expect(subject.constructor.name).to.include('APIResourceList');
-        })
-
-        it('should throw an error if a recognized kind is not supplied', () => {
-            const configuration = {
-                apiVersion: 'v1',
-                kind: 'UnrecognizedKind',
-                metadata: {
-                    name: 'sample-pod'
-                }
-            };
-
-            try {
-                k8sManifest(configuration);
-                assert.fail('An error should have been thrown but was not.');
-            } catch (e) {
-                expect(e.message.toString()).to.include(`The kind`);
-                expect(e.message.toString()).to.include(`wasn't found in the k8s client library. Are you sure you supplied an accepted kind?`);
+    it('should correctly map yaml objects when supplied as configuration', () => {
+        const configuration = {
+            apiVersion: 'v1',
+            kind: 'Pod',
+            metadata: {
+                name: 'sample-pod'
             }
-        })
+        };
 
+        const subject = k8sManifest(configuration);
 
+        expect(subject.constructor.name).to.include('Pod');
+    })
+
+    it('should correctly map api resource list objects when supplied as configuration', () => {
+        const configuration = {
+            "kind":"APIResourceList",
+            "groupVersion":"v1",
+            "resources":[{
+                "name":"bindings",
+                "singularName":"",
+                "namespaced":true,
+                "kind":"Binding",
+                "verbs":["create"]
+            },{
+                "name":"componentstatuses",
+                "singularName":"",
+                "namespaced":false,
+                "kind":"ComponentStatus",
+                "verbs":["get","list"],
+                "shortNames":["cs"]
+            },{
+                "name":"configmaps",
+                "singularName":"",
+                "namespaced":true,
+                "kind":"ConfigMap",
+                "verbs":["create","delete","deletecollection","get","list","patch","update","watch"],
+                "shortNames":["cm"],"storageVersionHash":"qFsyl6wFWjQ="
+            },{
+                "name":"endpoints",
+                "singularName":"",
+                "namespaced":true,
+                "kind":"Endpoints",
+                "verbs":["create","delete","deletecollection","get","list","patch","update","watch"],
+                "shortNames":["ep"],
+                "storageVersionHash":"fWeeMqaN/OA="
+            },{
+                "name":"events",
+                "singularName":"",
+                "namespaced":true,
+                "kind":"Event",
+                "verbs":["create","delete","deletecollection","get","list","patch","update","watch"],
+                "shortNames":["ev"],
+                "storageVersionHash":"r2yiGXH7wu8="
+            }]};
+
+        const subject = k8sManifest(configuration);
+
+        expect(subject.constructor.name).to.include('APIResourceList');
+    })
+
+    it('should throw an error if a recognized kind is not supplied', () => {
+        const configuration = {
+            apiVersion: 'v1',
+            kind: 'UnrecognizedKind',
+            metadata: {
+                name: 'sample-pod'
+            }
+        };
+
+        try {
+            k8sManifest(configuration);
+            assert.fail('An error should have been thrown but was not.');
+        } catch (e) {
+            expect(e.message.toString()).to.include(`The kind`);
+            expect(e.message.toString()).to.include(`wasn't found in the k8s client library. Are you sure you supplied an accepted kind?`);
+        }
     })
 
     describe('container mapping', () => {

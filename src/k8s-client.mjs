@@ -1,7 +1,7 @@
 import k8s from '@kubernetes/client-node';
 import {K8sApi} from './k8s-api.mjs';
 import {K8sObjectHandle} from './k8s-object-handle.mjs';
-import {k8sManifest, stringify} from './k8s-manifest.mjs';
+import {k8sManifest} from './k8s-manifest.mjs';
 import yaml from "yaml";
 
 class K8sClient {
@@ -25,28 +25,31 @@ class K8sClient {
         return new K8sObjectHandle(manifest);
     }
 
-    async apply() {
+    async applyAll(configurations) {
 
+        await this._api.init(this._kubeConfig);
+
+        return Promise.all(configurations.map((configuration) => this.apply(configuration)));
+    }
+
+    async apply(configuration) {
+
+        await this._api.init(this._kubeConfig);
+
+        if (typeof configuration === 'string') {
+            configuration = await this.create(configuration);
+        }
+
+        await this._api.patchAll([configuration.manifest]);
     }
 
     async get(kind, name, namespace) {
 
         await this._api.init(this._kubeConfig);
 
-        const handles = await this.getAll(kind, namespace);
+        const manifest = await this._api.read(kind, name, namespace);
 
-        let target = null;
-        for (const handle of handles) {
-
-            if (handle.manifest.metadata.name === name) {
-
-                console.info(`Target resource found:\n\n${stringify(handle.manifest)}`);
-                target = handle;
-                break;
-            }
-        }
-
-        return target;
+        return new K8sObjectHandle(manifest);
     }
 
     async getAll(kind, namespace) {
