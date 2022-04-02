@@ -47,7 +47,7 @@ class K8sClient {
 
         await this._api.init(this._kubeConfig);
 
-        const manifest = this._api.read(kind, name, namespace);
+        const manifest = await this._api.read(kind, name, namespace);
 
         return new K8sObjectHandle(manifest);
     }
