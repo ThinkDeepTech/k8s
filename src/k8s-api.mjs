@@ -114,7 +114,7 @@ class K8sApi {
         return targetVersion;
     }
 
-    async createAll(manifests) {
+    createAll(manifests) {
         return Promise.all(manifests.map(async(manifest) => {
             try {
                 await this._creationStrategy(manifest)();
@@ -128,11 +128,21 @@ class K8sApi {
         }));
     }
 
-    async deleteAll(manifests) {
-        return Promise.all(manifests.map((manifest) => this._deletionStrategy(manifest)()));
+    deleteAll(manifests) {
+        return Promise.all(manifests.map(async (manifest) => {
+            try {
+                await this._deletionStrategy(manifest)()
+            } catch(e) {
+
+                const {response: {statusCode}} = e;
+                if (statusCode !== 404) {
+                    throw e;
+                }
+            }
+        }));
     }
 
-    async listAll(kind, namespace) {
+    listAll(kind, namespace) {
         console.log(`Listing all objects with kind ${kind}${ !!namespace ? ` in namespace ${namespace}`: ``}.`);
         const responses = await this._listAllStrategy(kind, namespace)();
 
@@ -209,7 +219,7 @@ class K8sApi {
         const kind = k8sKind(manifest.constructor.name.toLowerCase());
         const apis = this._clientApis(kind);
 
-        let strategies = []
+        let strategies = [];
         for (const api of apis) {
 
             let strategy = null;

@@ -25,7 +25,17 @@ class K8sClient {
         return new K8sObjectHandle(manifest);
     }
 
-    async apply() {
+    async applyAll(configurations) {
+
+        await this._api.init(this._kubeConfig);
+
+        return Promise.all(configurations.map((configuration) => this.apply(configuration)));
+    }
+
+    async apply(configuration) {
+
+        await this._api.init(this._kubeConfig);
+
 
     }
 
