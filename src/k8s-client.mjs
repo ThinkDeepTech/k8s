@@ -66,9 +66,7 @@ class K8sClient {
 
         await this._api.init(this._kubeConfig);
 
-        const manifest = await this._api.read(kind, name, namespace);
-
-        return manifest;
+        return this._api.read(kind, name, namespace);
     }
 
     async getAll(kind, namespace) {
