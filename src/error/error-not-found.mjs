@@ -8,4 +8,4 @@ class ErrorNotFound extends Error {
     }
 }
 
-export {NotFound};
+export {ErrorNotFound};
