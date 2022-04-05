@@ -12,7 +12,7 @@ class K8sClient {
     }
 
     async init() {
-        await this._api.init();
+        await this._api.init(this._kubeConfig);
 
         return this;
     }
