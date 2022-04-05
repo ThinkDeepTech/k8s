@@ -165,7 +165,8 @@ class K8sApi {
         const results = await this._readStrategy(kind, name, namespace)();
 
         if (results.length === 0) {
-            throw new ErrorNotFound(`The resource of kind ${kind} with name ${name}${ !!namespace ? ` in namespace ${namespace}` : ``} wasn't found.`);
+            const namespaceMessage = !!namespace ? ` in namespace ${namespace}` : ``;
+            throw new ErrorNotFound(`The resource of kind ${kind} with name ${name}${namespaceMessage} wasn't found.`);
         }
 
         return results.map((received) => k8sManifest(received.response.body))[0];

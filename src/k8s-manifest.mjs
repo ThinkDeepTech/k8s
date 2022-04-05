@@ -1,5 +1,4 @@
 import k8s from "@kubernetes/client-node";
-import { config } from "chai";
 import { capitalizeFirstLetter } from "./capitalize-first-letter.mjs";
 import { k8sKind } from "./k8s-kind.mjs";
 
