@@ -201,8 +201,6 @@ class K8sApi {
     patchAll(manifests) {
         return Promise.all(manifests.map(async(manifest) => {
 
-                console.log(`Patch manifest value: \n\n${stringify(manifest)}`)
-
                 const responses = await this._patchStrategy(manifest)();
 
                 if (responses.length === 0) {
@@ -231,12 +229,32 @@ class K8sApi {
     }
 
     _patchKindThroughApiStrategy(api, kind, manifest) {
+
+        const pretty = undefined;
+
+        const dryRun = undefined;
+
+        const fieldManager = undefined;
+
+        const force = false;
+
+        const options = {
+            headers: {
+                'Content-type': 'application/merge-patch+json'
+            }
+        };
+
         if (api[`patchNamespaced${kind}`]) {
 
-            return api[`patchNamespaced${kind}`].bind(api, manifest.metadata.name, manifest.metadata.namespace, manifest);
+            return api[`patchNamespaced${kind}`].bind(
+                api, manifest.metadata.name, manifest.metadata.namespace, manifest,
+                pretty, dryRun, fieldManager, force, options
+                );
         } else if (api[`patch${kind}`]) {
 
-            return api[`patch${kind}`].bind(api, manifest.metadata.name, manifest);
+            return api[`patch${kind}`].bind(
+                api, manifest.metadata.name, manifest,
+                pretty, dryRun, fieldManager, force, options);
         } else {
             throw new Error(`
                 The patch function for kind ${kind} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
