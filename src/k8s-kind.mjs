@@ -14,7 +14,6 @@ const k8sKind = (prospectiveKind) => {
 
     if (Object.keys(kindStringToManifestKindMap).length === 0) {
         initKindMap();
-        console.log(`Initialized k8s kind.`);
     }
 
     const versionlessKind = removeVersion(prospectiveKind)

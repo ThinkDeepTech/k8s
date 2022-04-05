@@ -116,16 +116,11 @@ class K8sApi {
     async exists(kind, name, namespace) {
         try {
             await this.read(kind, name, namespace);
-
-            console.log(`Found ${kind} with name ${name} in namespace ${namespace}`);
             return true;
         } catch (e) {
             if (e.constructor.name !== 'ErrorNotFound') {
                 throw e;
             }
-
-            console.log(`Didn't find ${kind} with name ${name} in namespace ${namespace}`);
-
             return false;
         }
     }
@@ -147,8 +142,6 @@ class K8sApi {
     _creationStrategy(manifest) {
 
         const kind = k8sKind(manifest.kind.toLowerCase());
-
-        console.log(`Fetching api strategy for api ${manifest.apiVersion}`);
         const api = this._clientApi(manifest.apiVersion);
         if (api[`createNamespaced${kind}`]) {
 
@@ -207,6 +200,9 @@ class K8sApi {
 
     patchAll(manifests) {
         return Promise.all(manifests.map(async(manifest) => {
+
+                console.log(`Patch manifest value: \n\n${manifest}`)
+
                 const responses = await this._patchStrategy(manifest)();
 
                 if (responses.length === 0) {
@@ -222,7 +218,7 @@ class K8sApi {
 
     _patchStrategy(manifest) {
 
-        const kind = k8sKind(manifest.constructor.name.toLowerCase());
+        const kind = k8sKind(manifest.kind.toLowerCase());
 
         const apis = this._clientApis(kind);
 
@@ -249,7 +245,7 @@ class K8sApi {
     }
 
     async listAll(kind, namespace) {
-        console.log(`Listing all objects with kind ${kind}${ !!namespace ? ` in namespace ${namespace}`: ``}.`);
+
         const responses = await this._listStrategy(kind, namespace)();
 
         return Promise.all(responses.map((data) => {
