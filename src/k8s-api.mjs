@@ -1,7 +1,7 @@
 import k8s from '@kubernetes/client-node';
 import {ErrorNotFound} from './error/error-not-found.mjs'
 import { k8sKind } from './k8s-kind.mjs';
-import { k8sManifest, stringify } from './k8s-manifest.mjs';
+import { k8sManifest } from './k8s-manifest.mjs';
 
 class K8sApi {
 
