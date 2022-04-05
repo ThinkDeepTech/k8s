@@ -1,3 +1,4 @@
+import k8s from '@kubernetes/client-node';
 import chai, { assert } from 'chai';
 const expect = chai.expect;
 
@@ -5,6 +6,29 @@ import {k8sManifest} from '../src/k8s-manifest.mjs';
 
 describe('k8s-manifest', () => {
 
+    it('should correctly map k8s client objects when supplied as configurations', () => {
+        const configuration = new k8s.V1Pod();
+
+        const subject = k8sManifest(configuration);
+
+        expect(subject.constructor.name).to.include('Pod');
+    })
+
+    it('should correctly map beta k8s client objects when supplied as configurations', () => {
+        const configuration = new k8s.V1beta1ClusterRole();
+
+        const subject = k8sManifest(configuration);
+
+        expect(subject.constructor.name).to.include('ClusterRole');
+    })
+
+    it('should correctly map alpha k8s client objects when supplied as configurations', () => {
+        const configuration = new k8s.V1alpha1ClusterRole();
+
+        const subject = k8sManifest(configuration);
+
+        expect(subject.constructor.name).to.include('ClusterRole');
+    })
 
     it('should correctly map yaml objects when supplied as configuration', () => {
         const configuration = {

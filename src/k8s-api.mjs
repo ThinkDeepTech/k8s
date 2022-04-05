@@ -1,4 +1,5 @@
 import k8s from '@kubernetes/client-node';
+import {ErrorNotFound} from './error/error-not-found.mjs'
 import { k8sKind } from './k8s-kind.mjs';
 import { k8sManifest } from './k8s-manifest.mjs';
 
@@ -114,6 +115,19 @@ class K8sApi {
         return targetVersion;
     }
 
+    async exists(kind, name, namespace) {
+        try {
+            await this.read(kind, name, namespace);
+            return true;
+        } catch (e) {
+            if (e.constructor.name !== 'ErrorNotFound') {
+                throw e;
+            }
+
+            return false;
+        }
+    }
+
     createAll(manifests) {
         return Promise.all(manifests.map(async(manifest) => {
             try {
@@ -151,7 +165,8 @@ class K8sApi {
         const results = await this._readStrategy(kind, name, namespace)();
 
         if (results.length === 0) {
-            throw new Error(`The resource of kind ${kind} with name ${name}${ !!namespace ? ` in namespace ${namespace}` : ``} wasn't found.`);
+            const namespaceMessage = !!namespace ? ` in namespace ${namespace}` : ``;
+            throw new ErrorNotFound(`The resource of kind ${kind} with name ${name}${namespaceMessage} wasn't found.`);
         }
 
         return results.map((received) => k8sManifest(received.response.body))[0];
@@ -191,7 +206,15 @@ class K8sApi {
     patchAll(manifests) {
         return Promise.all(manifests.map(async(manifest) => {
                 const responses = await this._patchStrategy(manifest)();
-                return responses.map((received) => k8sManifest(received.response.body));
+
+                if (responses.length === 0) {
+                    const namespaceMessage = !!manifest.metadata.namespace ?  `in namespace ${manifest.metadata.namespace}` : '';
+                    throw new ErrorNotFound(`The resource ${manifest.metadata.name} of kind ${manifest.kind} ${namespaceMessage} wasn't found and, therefore, can't be updated.`);
+                }
+
+                const received = responses[0];
+
+                return k8sManifest(received.response.body);
         }));
     }
 
@@ -235,7 +258,16 @@ class K8sApi {
                 throw new Error(`The API response didn't include a valid body. Received: ${body}`);
             }
 
-            return k8sManifest(body);
+            const listManifest = k8sManifest(body);
+
+            for (let i = 0; i < listManifest.items.length; i++) {
+                listManifest.items[i].apiVersion = listManifest.apiVersion;
+
+                const itemTypeName = listManifest.items[i].constructor.name || '';
+                listManifest.items[i].kind = k8sKind(itemTypeName.toLowerCase());
+            }
+
+            return listManifest;
         }));
     }
 
@@ -279,15 +311,17 @@ class K8sApi {
 
     _deletionStrategy(manifest) {
 
-        const kind = k8sKind(manifest.constructor.name.toLowerCase());
-        const apis = this._clientApis(kind);
-
-        let strategies = [];
-        for (const api of apis) {
-            strategies.push(this._deleteKindThroughApiStrategy(api, kind, manifest));
+        if (!manifest?.kind) {
+            throw new Error(`The manifest requires a kind.`);
         }
 
-        return this._handleStrategyExecution.bind(this, strategies);
+        if (!manifest?.apiVersion) {
+            throw new Error(`The manifest requires an api version.`);
+        }
+
+        const kind = k8sKind(manifest.kind.toLowerCase());
+        const api = this._clientApi(manifest.apiVersion);
+        return this._handleStrategyExecution.bind(this, [this._deleteKindThroughApiStrategy(api, kind, manifest)]);
     }
 
     _deleteKindThroughApiStrategy(api, kind, manifest) {

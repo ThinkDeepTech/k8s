@@ -12,13 +12,18 @@ class K8sClient {
         this._api = new K8sApi();
     }
 
-    async create (yamlString) {
+    async createAll(configurations) {
 
         await this._api.init(this._kubeConfig);
 
-        const parsedYaml = yaml.parse(yamlString);
+        return Promise.all(configurations.map((configuration) => this.create(configuration)));
+    }
 
-        const manifest = k8sManifest(parsedYaml);
+    async create (configuration) {
+
+        await this._api.init(this._kubeConfig);
+
+        const manifest = (typeof configuration === 'string') ? this._parse(configuration) : configuration;
 
         await this._api.createAll([manifest]);
 
@@ -36,11 +41,14 @@ class K8sClient {
 
         await this._api.init(this._kubeConfig);
 
-        if (typeof configuration === 'string') {
-            configuration = await this.create(configuration);
+        const manifest = (typeof configuration === 'string') ? this._parse(configuration) : configuration;
+
+        const alreadyExists = await this._api.exists(manifest.kind, manifest.metadata.name, manifest.metadata.namespace);
+        if (!alreadyExists) {
+            return this.create(manifest);
         }
 
-        await this._api.patchAll([configuration.manifest]);
+        return this._api.patchAll([manifest])[0];
     }
 
     async get(kind, name, namespace) {
@@ -73,6 +81,12 @@ class K8sClient {
         await this._api.init(this._kubeConfig);
 
         return this._api.deleteAll([k8sObjectHandle.manifest]);
+    }
+
+    _parse(yamlString) {
+        const parsedYaml = yaml.parse(yamlString);
+
+        return k8sManifest(parsedYaml);
     }
 }
 

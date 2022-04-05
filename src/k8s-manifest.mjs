@@ -4,6 +4,8 @@ import { k8sKind } from "./k8s-kind.mjs";
 
 const k8sManifest = (configuration) => {
 
+    if (clientObjectType(configuration.constructor.name)) return configuration;
+
     if (!configuration.apiVersion) {
         configuration.apiVersion = configuration.groupVersion;
     }
