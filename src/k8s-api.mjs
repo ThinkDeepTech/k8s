@@ -118,11 +118,15 @@ class K8sApi {
     async exists(kind, name, namespace) {
         try {
             await this.read(kind, name, namespace);
+
+            console.log(`Found ${kind} with name ${name} in namespace ${namespace}`);
             return true;
         } catch (e) {
             if (e.constructor.name !== 'ErrorNotFound') {
                 throw e;
             }
+
+            console.log(`Didn't find ${kind} with name ${name} in namespace ${namespace}`);
 
             return false;
         }
