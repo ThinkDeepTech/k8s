@@ -11,9 +11,13 @@ class K8sClient {
         this._api = new K8sApi();
     }
 
-    async createAll(configurations) {
+    async init() {
+        await this._api.init();
 
-        await this._api.init(this._kubeConfig);
+        return this;
+    }
+
+    async createAll(configurations) {
 
         const targets = [];
         for (const configuration of configurations) {
@@ -25,8 +29,6 @@ class K8sClient {
 
     async create (configuration) {
 
-        await this._api.init(this._kubeConfig);
-
         const manifest = this._manifest(configuration);
 
         await this._api.createAll([manifest]);
@@ -35,8 +37,6 @@ class K8sClient {
     }
 
     async applyAll(configurations) {
-
-        await this._api.init(this._kubeConfig);
 
         const targets = [];
         for (const configuration of configurations) {
@@ -47,8 +47,6 @@ class K8sClient {
     }
 
     async apply(configuration) {
-
-        await this._api.init(this._kubeConfig);
 
         const manifest = this._manifest(configuration);
 
@@ -63,15 +61,10 @@ class K8sClient {
     }
 
     async get(kind, name, namespace) {
-
-        await this._api.init(this._kubeConfig);
-
         return this._api.read(kind, name, namespace);
     }
 
     async getAll(kind, namespace) {
-
-        await this._api.init(this._kubeConfig);
 
         const resources = await this._api.listAll(kind, namespace);
 
@@ -86,9 +79,6 @@ class K8sClient {
     }
 
     async delete (manifest) {
-
-        await this._api.init(this._kubeConfig);
-
         return this._api.deleteAll([manifest]);
     }
 
