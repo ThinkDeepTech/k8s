@@ -35,27 +35,25 @@ class K8sApi {
 
     async _initKindMaps(kubeConfig) {
 
-        return Promise.all([
-            this._forEachApiResourceList(kubeConfig, (apiClient, resourceList) => {
+        await this._forEachApiResourceList(kubeConfig, (apiClient, resourceList) => {
 
-                for (const resource of resourceList.resources) {
+            for (const resource of resourceList.resources) {
 
-                    const resourceKind = resource.kind.toLowerCase();
-                    if (!this._kindToApiClients[resourceKind]) {
-                        this._kindToApiClients[resourceKind] = [];
-                    }
-
-                    this._kindToApiClients[resourceKind].push(apiClient);
-
-                    this._kindToGroupVersion[resourceKind] = resourceList.groupVersion;
+                const resourceKind = resource.kind.toLowerCase();
+                if (!this._kindToApiClients[resourceKind]) {
+                    this._kindToApiClients[resourceKind] = [];
                 }
-            }),
-            this._forEachApiGroup(kubeConfig, (apiClient, apiGroup) => {
-                for (const entry of apiGroup.versions) {
-                    this._groupVersionToPreferredVersion[entry.groupVersion] = apiGroup.preferredVersion.groupVersion;
-                }
-            })
-        ]);
+
+                this._kindToApiClients[resourceKind].push(apiClient);
+
+                this._kindToGroupVersion[resourceKind] = resourceList.groupVersion;
+            }
+        });
+        await this._forEachApiGroup(kubeConfig, (apiClient, apiGroup) => {
+            for (const entry of apiGroup.versions) {
+                this._groupVersionToPreferredVersion[entry.groupVersion] = apiGroup.preferredVersion.groupVersion;
+            }
+        });
     };
 
     _clientApis(kind) {
