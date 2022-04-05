@@ -1,6 +1,5 @@
 import k8s from '@kubernetes/client-node';
 import {K8sApi} from './k8s-api.mjs';
-import {K8sObjectHandle} from './k8s-object-handle.mjs';
 import {k8sManifest} from './k8s-manifest.mjs';
 import yaml from "yaml";
 
@@ -16,7 +15,12 @@ class K8sClient {
 
         await this._api.init(this._kubeConfig);
 
-        return Promise.all(configurations.map((configuration) => this.create(configuration)));
+        const targets = [];
+        for (const configuration of configurations) {
+            targets.push(await this.create(configuration));
+        }
+
+        return targets;
     }
 
     async create (configuration) {
@@ -27,7 +31,7 @@ class K8sClient {
 
         await this._api.createAll([manifest]);
 
-        return new K8sObjectHandle(manifest);
+        return manifest;
     }
 
     async applyAll(configurations) {
@@ -50,16 +54,12 @@ class K8sClient {
 
         const alreadyExists = await this._api.exists(manifest.kind, manifest.metadata.name, manifest.metadata.namespace);
         if (!alreadyExists) {
-
-            console.log(`Creating configuration because it doesn't already exist.`);
             return this.create(configuration);
         }
 
         const modifiedManifests = await this._api.patchAll([manifest]);
 
-        console.log(`Modified manifest: ${modifiedManifests[0]}`);
-
-        return new K8sObjectHandle(modifiedManifests[0]);
+        return modifiedManifests[0];
     }
 
     async get(kind, name, namespace) {
@@ -68,7 +68,7 @@ class K8sClient {
 
         const manifest = await this._api.read(kind, name, namespace);
 
-        return new K8sObjectHandle(manifest);
+        return manifest;
     }
 
     async getAll(kind, namespace) {
@@ -80,18 +80,18 @@ class K8sClient {
         let targets = [];
         for (const resource of resources) {
             for (const item of resource.items) {
-                targets.push(new K8sObjectHandle(item));
+                targets.push(item);
             }
         }
 
         return targets;
     }
 
-    async delete (k8sObjectHandle) {
+    async delete (manifest) {
 
         await this._api.init(this._kubeConfig);
 
-        return this._api.deleteAll([k8sObjectHandle.manifest]);
+        return this._api.deleteAll([manifest]);
     }
 
     _parse(yamlString) {
@@ -101,7 +101,7 @@ class K8sClient {
     }
 
     _manifest(configuration) {
-        return (typeof configuration === 'string') ? this._parse(configuration) : configuration.manifest;
+        return (typeof configuration === 'string') ? this._parse(configuration) : configuration;
     }
 }
 
