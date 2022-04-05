@@ -41,7 +41,7 @@ class K8sClient {
 
         await this._api.init(this._kubeConfig);
 
-        const manifest = (typeof configuration === 'string') ? this._parse(configuration) : configuration;
+        const manifest = (typeof configuration === 'string') ? this._parse(configuration) : configuration.manifest;
 
         const alreadyExists = await this._api.exists(manifest.kind, manifest.metadata.name, manifest.metadata.namespace);
         if (!alreadyExists) {
