@@ -236,7 +236,7 @@ class K8sApi {
 
         const fieldManager = undefined;
 
-        const force = false;
+        const force = undefined;
 
         const options = {
             headers: {
