@@ -49,7 +49,7 @@ class K8sApi {
                 this._kindToGroupVersion[resourceKind] = resourceList.groupVersion;
             }
         });
-        await this._forEachApiGroup(kubeConfig, (apiClient, apiGroup) => {
+        await this._forEachApiGroup(kubeConfig, (_, apiGroup) => {
             for (const entry of apiGroup.versions) {
                 this._groupVersionToPreferredVersion[entry.groupVersion] = apiGroup.preferredVersion.groupVersion;
             }
