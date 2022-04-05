@@ -23,7 +23,7 @@ class K8sClient {
 
         await this._api.init(this._kubeConfig);
 
-        const manifest = (typeof configuration === 'string') ? this._parse(configuration) : configuration;
+        const manifest = this._manifest(configuration);
 
         await this._api.createAll([manifest]);
 
@@ -41,14 +41,20 @@ class K8sClient {
 
         await this._api.init(this._kubeConfig);
 
-        const manifest = (typeof configuration === 'string') ? this._parse(configuration) : configuration.manifest;
+        const manifest = this._manifest(configuration);
 
         const alreadyExists = await this._api.exists(manifest.kind, manifest.metadata.name, manifest.metadata.namespace);
         if (!alreadyExists) {
-            return this.create(manifest);
+
+            console.log(`Creating configuration because it doesn't already exist.`);
+            return this.create(configuration);
         }
 
-        return this._api.patchAll([manifest])[0];
+        const modifiedManifest = this._api.patchAll([manifest])[0];
+
+        console.log(`Modified manifest: ${modifiedManifest}`);
+
+        return new K8sObjectHandle(modifiedManifest);
     }
 
     async get(kind, name, namespace) {
@@ -87,6 +93,10 @@ class K8sClient {
         const parsedYaml = yaml.parse(yamlString);
 
         return k8sManifest(parsedYaml);
+    }
+
+    _manifest(configuration) {
+        return (typeof configuration === 'string') ? this._parse(configuration) : configuration.manifest;
     }
 }
 
