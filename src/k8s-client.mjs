@@ -34,7 +34,12 @@ class K8sClient {
 
         await this._api.init(this._kubeConfig);
 
-        return Promise.all(configurations.map((configuration) => this.apply(configuration)));
+        const targets = [];
+        for (const configuration of configurations) {
+            targets.push(await this.apply(configuration));
+        }
+
+        return targets;
     }
 
     async apply(configuration) {
