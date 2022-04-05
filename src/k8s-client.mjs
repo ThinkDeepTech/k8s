@@ -55,11 +55,11 @@ class K8sClient {
             return this.create(configuration);
         }
 
-        const modifiedManifest = this._api.patchAll([manifest])[0];
+        const modifiedManifests = await this._api.patchAll([manifest]);
 
-        console.log(`Modified manifest: ${modifiedManifest}`);
+        console.log(`Modified manifest: ${modifiedManifests[0]}`);
 
-        return new K8sObjectHandle(modifiedManifest);
+        return new K8sObjectHandle(modifiedManifests[0]);
     }
 
     async get(kind, name, namespace) {
