@@ -125,18 +125,23 @@ class K8sApi {
         }
     }
 
-    createAll(manifests) {
-        return Promise.all(manifests.map(async(manifest) => {
+    async createAll(manifests) {
+        return (await Promise.all(manifests.map(async(manifest) => {
             try {
-                await this._creationStrategy(manifest)();
+
+                const received = await this._creationStrategy(manifest)();
+
+                return this._configuredManifest(received.response.body);
             } catch (e) {
 
                 const {response: {statusCode}} = e;
                 if (statusCode !== 409) {
                     throw e;
                 }
+
+                return null;
             }
-        }));
+        }))).filter((val) => !!val);
     }
 
     _creationStrategy(manifest) {
@@ -327,11 +332,15 @@ class K8sApi {
 
     _deletionStrategy(manifest) {
 
-        if (!manifest?.kind) {
+        if (!manifest) {
+            throw new Error(`The manifest value is invalid: ${manifest}`);
+        }
+
+        if (!manifest.kind) {
             throw new Error(`The manifest requires a kind.`);
         }
 
-        if (!manifest?.apiVersion) {
+        if (!manifest.apiVersion) {
             throw new Error(`The manifest requires an api version.`);
         }
 
