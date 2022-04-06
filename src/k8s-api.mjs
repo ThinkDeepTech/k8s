@@ -164,7 +164,7 @@ class K8sApi {
             throw new ErrorNotFound(`The resource of kind ${kind} with name ${name}${namespaceMessage} wasn't found.`);
         }
 
-        return results.map((received) => k8sManifest(received.response.body))[0];
+        return results.map((received) => this._configuredManifest(received.response.body))[0];
     }
 
     _readStrategy(prospectiveKind, name, namespace) {
@@ -210,7 +210,7 @@ class K8sApi {
 
                 const received = responses[0];
 
-                return k8sManifest(received.response.body);
+                return this._configuredManifest(received.response.body);
         }));
     }
 
@@ -368,6 +368,17 @@ class K8sApi {
                 return null;
             }
         }))).filter((value) => !!value);
+    }
+
+    _configuredManifest(configuration) {
+
+        const manifest = k8sManifest(configuration);
+
+        if (!manifest.kind) {
+            manifest.kind = k8sKind(manifest.constructor.name);
+        }
+
+        return manifest;
     }
 };
 
