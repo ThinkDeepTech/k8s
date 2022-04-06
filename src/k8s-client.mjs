@@ -31,9 +31,7 @@ class K8sClient {
 
         const manifest = this._manifest(configuration);
 
-        await this._api.createAll([manifest]);
-
-        return manifest;
+        return (await this._api.createAll([manifest]))[0] || manifest;
     }
 
     async applyAll(configurations) {
