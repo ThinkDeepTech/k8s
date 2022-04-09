@@ -5,6 +5,11 @@ Simple interface wrapping the kubernetes javascript client.
 - [Kubernetes javascript client](https://github.com/kubernetes-client/javascript) v0.15
 - Node v16.13.1
 
+# Installation
+```console
+    npm i @thinkdeep/k8s
+```
+
 # Usage
 
 Assuming the role binding linking the necessary role and service account has the needed permissions:
