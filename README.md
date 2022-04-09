@@ -3,7 +3,7 @@ Simple interface wrapping the kubernetes javascript client.
 
 # Dependencies
 - [Kubernetes javascript client](https://github.com/kubernetes-client/javascript) v0.15
-- Node v16.13.1
+- [Node v16.14.2 LTS](https://nodejs.org/en/)
 
 # Installation
 ```console
