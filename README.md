@@ -24,6 +24,7 @@ Assuming the role binding linking the necessary role and service account has the
         name: 'dynamic-cron-job',
         namespace: 'production',
         schedule: '* * * * *',
+        image: 'busybox',
         command: 'echo',
         args: ['Hello World']
     };
