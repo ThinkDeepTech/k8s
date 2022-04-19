@@ -1,7 +1,6 @@
 import k8s from '@kubernetes/client-node';
 import {ErrorNotFound} from './error/error-not-found.mjs'
 import { k8sKind } from './k8s-kind.mjs';
-import { k8sManifest } from './k8s-manifest.mjs';
 
 class K8sApi {
 
@@ -84,7 +83,7 @@ class K8sApi {
                 try {
                     const {response: {body}} = await fetchResources.bind(apiClient)();
 
-                    callback(apiClient, k8sManifest(body));
+                    callback(apiClient, body);
                 } catch (e) {
 
                     const {response: {statusCode}} = e;
@@ -279,13 +278,11 @@ class K8sApi {
                 throw new Error(`The API response didn't include a valid body. Received: ${body}`);
             }
 
-            const listManifest = k8sManifest(body);
+            for (let i = 0; i < body.items.length; i++) {
+                body.items[i].apiVersion = body.apiVersion;
 
-            for (let i = 0; i < listManifest.items.length; i++) {
-                listManifest.items[i].apiVersion = listManifest.apiVersion;
-
-                const itemTypeName = listManifest.items[i].constructor.name || '';
-                listManifest.items[i].kind = k8sKind(itemTypeName.toLowerCase());
+                const itemTypeName = body.items[i].constructor.name || '';
+                body.items[i].kind = k8sKind(itemTypeName.toLowerCase());
             }
 
             return listManifest;
@@ -381,13 +378,11 @@ class K8sApi {
 
     _configuredManifest(configuration) {
 
-        const manifest = k8sManifest(configuration);
-
-        if (!manifest.kind) {
-            manifest.kind = k8sKind(manifest.constructor.name);
+        if (!configuration.kind) {
+            configuration.kind = k8sKind(configuration.constructor.name);
         }
 
-        return manifest;
+        return configuration;
     }
 };
 
