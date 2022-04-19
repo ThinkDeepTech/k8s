@@ -11,6 +11,11 @@ class K8sApi {
         this._groupVersionToPreferredVersion = {};
     }
 
+    /**
+     * Initialize the api maps.
+     *
+     * @param {Object} kubeConfig - K8s javascript client KubeConfig object.
+     */
     async init(kubeConfig) {
         if (!this.initialized()) {
             await Promise.all([
@@ -21,6 +26,11 @@ class K8sApi {
         }
     };
 
+    /**
+     * Determine if the api has been initialized.
+     *
+     * @returns True if initialized. False otherwise.
+     */
     initialized() {
         return (Object.keys(this._apiVersionToApiClient).length > 0) && (Object.keys(this._kindToApiClients).length > 0)
             && (Object.keys(this._kindToGroupVersion).length > 0) && (Object.keys(this._groupVersionToPreferredVersion).length > 0);
@@ -95,6 +105,12 @@ class K8sApi {
         }
     }
 
+    /**
+     * Get the preferred api version.
+     *
+     * @param {String} kind Kind for which the preferred version is desired.
+     * @returns Preferred api version for specified kind.
+     */
     preferredVersion(kind) {
 
         const kindGroup = this._kindToGroupVersion[kind.toLowerCase()];
@@ -112,6 +128,15 @@ class K8sApi {
         return targetVersion;
     }
 
+    /**
+     * Determine if the specified object exists on the cluster.
+     *
+     * @param {String} kind K8s kind.
+     * @param {String} name K8s object metadata name.
+     * @param {String} namespace K8s namespace.
+     *
+     * @returns True if the object exists on the cluster. False otherwise.
+     */
     async exists(kind, name, namespace) {
         try {
             await this.read(kind, name, namespace);
@@ -124,6 +149,12 @@ class K8sApi {
         }
     }
 
+    /**
+     *  Create all objects on the cluster.
+     *
+     * @param {Array<any>} manifests K8s javascript client objects to create.
+     * @returns K8s client objects resulting from creation on the cluster or [] if the object already exists.
+     */
     async createAll(manifests) {
         return (await Promise.all(manifests.map(async(manifest) => {
             try {
@@ -160,6 +191,17 @@ class K8sApi {
         }
     }
 
+    /**
+     * Read an object from the cluster.
+     *
+     * NOTE: If the object doesn't exist on the cluster a ErrorNotFound exception will be thrown.
+     *
+     * @param {String} kind The k8s kind (i.e, CronJob).
+     * @param {String} name The name of the object as seen in the k8s metadata name field.
+     * @param {String} namespace The k8s object's namespace.
+     *
+     * @returns A kubernetes javascript client representation of the object on the cluster.
+     */
     async read(kind, name, namespace) {
         const results = await this._readStrategy(kind, name, namespace)();
 
@@ -202,6 +244,12 @@ class K8sApi {
         }
     }
 
+    /**
+     * Update the cluster to reflect the manifests provided.
+     *
+     * @param {Array<any>} manifests
+     * @returns
+     */
     patchAll(manifests) {
         return Promise.all(manifests.map(async(manifest) => {
 
@@ -285,7 +333,7 @@ class K8sApi {
                 body.items[i].kind = k8sKind(itemTypeName.toLowerCase());
             }
 
-            return listManifest;
+            return body;
         }));
     }
 

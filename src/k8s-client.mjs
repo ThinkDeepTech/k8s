@@ -9,7 +9,7 @@ class K8sClient {
 
     /**
      * @param {KubeConfig} kubeConfig Kubernetes javascript client KubeConfig to apply.
-     * @param {K8sApi} api K8sApi object. The presence of this parameter is primarily for testing
+     * @param {K8sApi} api K8sApi object. The presence of this parameter is primarily for testing.
      */
     constructor(kubeConfig, api = createApi()) {
         this._kubeConfig = kubeConfig;
@@ -109,20 +109,6 @@ class K8sClient {
     }
 
     /**
-     * Get an object from the cluster.
-     *
-     * NOTE: If the object doesn't exist on the cluster a ErrorNotFound exception will be thrown.
-     *
-     * @param {String} kind The k8s kind (i.e, CronJob).
-     * @param {String} name The name of the object as seen in the k8s metadata name field.
-     * @param {String} namespace The k8s object's namespace.
-     * @returns A kubernetes javascript client representation of the object on the cluster.
-     */
-    async get(kind, name, namespace) {
-        return this._api.read(kind, name, namespace);
-    }
-
-    /**
      * Get all objects of the specified kind in the associated namespace.
      *
      * @param {String} kind The k8s kind (i.e, CronJob).
@@ -141,6 +127,31 @@ class K8sClient {
         }
 
         return targets;
+    }
+
+    /**
+     * Get an object from the cluster.
+     *
+     * NOTE: If the object doesn't exist on the cluster a ErrorNotFound exception will be thrown.
+     *
+     * @param {String} kind The k8s kind (i.e, CronJob).
+     * @param {String} name The name of the object as seen in the k8s metadata name field.
+     * @param {String} namespace The k8s object's namespace.
+     * @returns A kubernetes javascript client representation of the object on the cluster.
+     */
+    async get(kind, name, namespace) {
+        return this._api.read(kind, name, namespace);
+    }
+
+    /**
+     * Delete all the specified objects on the k8s cluster.
+     *
+     * @param {Array<any>} manifests - K8s javascript client objects representing the cluster objects to be deleted.
+     */
+    async deleteAll(manifests) {
+        for (const manifest of manifests) {
+            await this.delete(manifest);
+        }
     }
 
     /**

@@ -779,4 +779,11 @@ describe('k8s-client', () => {
             expect(actual).to.equal(clientObjectsFromApi[0]);
         })
     })
+
+    describe('getAll', () => {
+
+        it('should flatten the resource list', async () => {
+
+        })
+    })
 })
