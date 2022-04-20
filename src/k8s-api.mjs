@@ -73,21 +73,30 @@ class K8sApi {
         return this._apiVersionToApiClient[apiVersion.toLowerCase()] || null;
     }
 
-    async _forEachApiGroup(kubeConfig, callback) {
-        await this._forEachApi(kubeConfig, 'getAPIGroup', callback, k8s.APIS);
+    async _forEachApiGroup(kubeConfig, callback, apis = k8s.APIS) {
+        await this._forEachApi(kubeConfig, 'getAPIGroup', callback, apis);
     }
 
-    async _forEachApiResourceList(kubeConfig, callback) {
-        await this._forEachApi(kubeConfig, 'getAPIResources', callback, k8s.APIS);
+    async _forEachApiResourceList(kubeConfig, callback, apis = k8s.APIS) {
+        await this._forEachApi(kubeConfig, 'getAPIResources', callback, apis);
     }
 
     async _forEachApi(kubeConfig, resourceFunctionName, callback, apis) {
+
+        if (!(kubeConfig instanceof k8s.KubeConfig)) {
+            throw new Error(`Supplied k8s kube configuration was invalid.`);
+        }
+
+        if (!Array.isArray(apis)) {
+            throw new Error(`Supplied APIs must be an array.`);
+        }
+
         for (const api of apis) {
 
             const apiClient = kubeConfig.makeApiClient(api);
 
             if (!(resourceFunctionName in apiClient)) {
-                throw new ErrorNotFound(`The resource function provided was not found.`);
+                continue;
             }
 
             const fetchResources = apiClient[resourceFunctionName];
@@ -96,17 +105,9 @@ class K8sApi {
                 throw new Error(`The resource function provided was not a function: ${resourceFunctionName}`);
             }
 
-            try {
-                const {response: {body}} = await fetchResources.bind(apiClient)();
+            const {response: {body}} = await fetchResources.bind(apiClient)();
 
-                callback(apiClient, body);
-            } catch (e) {
-
-                const {response: {statusCode}} = e;
-                if (statusCode !== 404) {
-                    throw e;
-                }
-            }
+            callback(apiClient, body);
         }
     }
 
