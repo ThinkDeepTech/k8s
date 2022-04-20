@@ -31,6 +31,16 @@ class K8sClient {
     }
 
     /**
+     * Get the cluster preferred api version.
+     *
+     * @param {String} kind Kind for which the preferred version is desired.
+     * @returns Preferred api version for specified kind.
+     */
+    preferredVersion(kind) {
+        return this._api.preferredVersion(kind);
+    }
+
+    /**
      * Determine if an object exists on the cluster.
      * @param {String} kind The k8s kind (i.e, CronJob).
      * @param {String} name The name of the object as seen in the k8s metadata name field.

@@ -18,10 +18,7 @@ class K8sApi {
      */
     async init(kubeConfig) {
         if (!this.initialized()) {
-            await Promise.all([
-                this._initKindMaps(kubeConfig),
-                this._initApiVersionToApiClientMap(kubeConfig)
-            ]);
+            await this._initClientMappings(kubeConfig);
             console.log(`Initialized the k8s api.`);
         }
     };
@@ -36,33 +33,43 @@ class K8sApi {
             && (Object.keys(this._kindToGroupVersion).length > 0) && (Object.keys(this._groupVersionToPreferredVersion).length > 0);
     }
 
-    async _initApiVersionToApiClientMap(kubeConfig) {
-        await this._forEachApiResourceList(kubeConfig, (apiClient, resourceList) => {
-            this._apiVersionToApiClient[resourceList.groupVersion.toLowerCase()] = apiClient;
-        })
-    }
+    _initClientMappings(kubeConfig) {
 
-    async _initKindMaps(kubeConfig) {
+        return Promise.all([
+            this._forEachApiResourceList(kubeConfig, (apiClient, resourceList) => {
 
-        await this._forEachApiResourceList(kubeConfig, (apiClient, resourceList) => {
+                /**
+                 * Initialize apiVersion-specific client mappings.
+                 */
+                this._apiVersionToApiClient[resourceList.groupVersion.toLowerCase()] = apiClient;
 
-            for (const resource of resourceList.resources) {
+                for (const resource of resourceList.resources) {
 
-                const resourceKind = resource.kind.toLowerCase();
-                if (!this._kindToApiClients[resourceKind]) {
-                    this._kindToApiClients[resourceKind] = [];
+                    const resourceKind = resource.kind.toLowerCase();
+                    if (!this._kindToApiClients[resourceKind]) {
+                        this._kindToApiClients[resourceKind] = [];
+                    }
+
+                    /**
+                     * Initialize broadcast capability based on kind.
+                     */
+                    this._kindToApiClients[resourceKind].push(apiClient);
+
+                    /**
+                     * Enable mapping of kind to group version for preferred version determination.
+                     */
+                    this._kindToGroupVersion[resourceKind] = resourceList.groupVersion;
                 }
-
-                this._kindToApiClients[resourceKind].push(apiClient);
-
-                this._kindToGroupVersion[resourceKind] = resourceList.groupVersion;
-            }
-        });
-        await this._forEachApiGroup(kubeConfig, (_, apiGroup) => {
-            for (const entry of apiGroup.versions) {
-                this._groupVersionToPreferredVersion[entry.groupVersion] = apiGroup.preferredVersion.groupVersion;
-            }
-        });
+            }),
+            this._forEachApiGroup(kubeConfig, (_, apiGroup) => {
+                for (const entry of apiGroup.versions) {
+                    /**
+                     * Initialize group version to preferred api version.
+                     */
+                    this._groupVersionToPreferredVersion[entry.groupVersion] = apiGroup.preferredVersion.groupVersion;
+                }
+            })
+        ]);
     };
 
     _clientApis(kind) {
