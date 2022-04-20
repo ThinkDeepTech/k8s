@@ -74,32 +74,37 @@ class K8sApi {
     }
 
     async _forEachApiGroup(kubeConfig, callback) {
-        await this._forEachApi(kubeConfig, 'getAPIGroup', callback);
+        await this._forEachApi(kubeConfig, 'getAPIGroup', callback, k8s.APIS);
     }
 
     async _forEachApiResourceList(kubeConfig, callback) {
-        await this._forEachApi(kubeConfig, 'getAPIResources', callback);
+        await this._forEachApi(kubeConfig, 'getAPIResources', callback, k8s.APIS);
     }
 
-    async _forEachApi(kubeConfig, resourceFunctionName, callback) {
-        for (const api of k8s.APIS) {
+    async _forEachApi(kubeConfig, resourceFunctionName, callback, apis) {
+        for (const api of apis) {
 
             const apiClient = kubeConfig.makeApiClient(api);
 
+            if (!(resourceFunctionName in apiClient)) {
+                throw new ErrorNotFound(`The resource function provided was not found.`);
+            }
+
             const fetchResources = apiClient[resourceFunctionName];
 
-            if (typeof fetchResources === 'function') {
+            if (!(typeof fetchResources === 'function')) {
+                throw new Error(`The resource function provided was not a function: ${resourceFunctionName}`);
+            }
 
-                try {
-                    const {response: {body}} = await fetchResources.bind(apiClient)();
+            try {
+                const {response: {body}} = await fetchResources.bind(apiClient)();
 
-                    callback(apiClient, body);
-                } catch (e) {
+                callback(apiClient, body);
+            } catch (e) {
 
-                    const {response: {statusCode}} = e;
-                    if (statusCode !== 404) {
-                        throw e;
-                    }
+                const {response: {statusCode}} = e;
+                if (statusCode !== 404) {
+                    throw e;
                 }
             }
         }
@@ -152,8 +157,8 @@ class K8sApi {
     /**
      *  Create all objects on the cluster.
      *
-     * @param {Array<any>} manifests K8s javascript client objects to create.
-     * @returns K8s client objects resulting from creation on the cluster or [] if the object already exists.
+     * @param {Array<any>} manifests K8s javascript client objects.
+     * @returns K8s client objects or [] if the objects already exist.
      */
     async createAll(manifests) {
         return (await Promise.all(manifests.map(async(manifest) => {
@@ -245,10 +250,10 @@ class K8sApi {
     }
 
     /**
-     * Update the cluster to reflect the manifests provided.
+     * Update the cluster objects with the specified manifests.
      *
-     * @param {Array<any>} manifests
-     * @returns
+     * @param {Array<any>} manifests K8s javascript client objects.
+     * @returns K8s client objects.
      */
     patchAll(manifests) {
         return Promise.all(manifests.map(async(manifest) => {
@@ -314,6 +319,13 @@ class K8sApi {
         }
     }
 
+    /**
+     * List all cluster objects.
+     *
+     * @param {String} kind The k8s kind (i.e, CronJob).
+     * @param {String} namespace The namespace of the object as seen in the k8s metadata namespace field.
+     * @returns Array of kind list objects (i.e, CronJobList).
+     */
     async listAll(kind, namespace) {
 
         const responses = await this._listStrategy(kind, namespace)();
@@ -370,7 +382,11 @@ class K8sApi {
     }
 
 
-
+    /**
+     * Delete all the specified objects on the cluster.
+     *
+     * @param {Array<any>} manifests K8s javascript client objects.
+     */
     deleteAll(manifests) {
         return Promise.all(manifests.map((manifest) => this._deletionStrategy(manifest)()));
     }
