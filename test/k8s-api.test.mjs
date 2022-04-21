@@ -30,31 +30,6 @@ describe('k8s-api', () => {
             sinon.createStubInstance(k8s.EventsV1Api)
         ];
 
-        resourceLists = [
-            k8sManifest(`
-                kind: APIResourceList
-                apiVersion: v1
-                groupVersion: events.k8s.io/v1beta1
-                resources:
-                  - name: events
-                    singularName: ''
-                    namespaced: true
-                    kind: Event
-                    verbs:
-                      - create
-                      - delete
-                      - deletecollection
-                      - get
-                      - list
-                      - patch
-                      - update
-                      - watch
-                    shortNames:
-                      - ev
-                    storageVersionHash: r2yiGXH7wu8=
-            `)
-        ];
-
         apiGroups = [
             k8sManifest(`
                 kind: APIGroup
@@ -84,11 +59,54 @@ describe('k8s-api', () => {
             `)
         ];
 
+        resourceLists = [
+            k8sManifest(`
+                kind: APIResourceList
+                apiVersion: v1
+                groupVersion: events.k8s.io/v1beta1
+                resources:
+                  - name: events
+                    singularName: ''
+                    namespaced: true
+                    kind: Event
+                    verbs:
+                      - create
+                      - delete
+                      - deletecollection
+                      - get
+                      - list
+                      - patch
+                      - update
+                      - watch
+                    shortNames:
+                      - ev
+                    storageVersionHash: r2yiGXH7wu8=
+            `)
+        ];
+
         kubeConfig = sinon.createStubInstance(k8s.KubeConfig);
 
-        kubeConfig.makeApiClient.onCall(0).returns(apiClients[0]);
-        kubeConfig.makeApiClient.onCall(1).returns(apiClients[1]);
-        kubeConfig.makeApiClient.onCall(2).returns(apiClients[2]);
+        kubeConfig.makeApiClient.withArgs(k8s.AdmissionregistrationApi).returns(apiClients[0]);
+        kubeConfig.makeApiClient.withArgs(k8s.EventsApi).returns(apiClients[1]);
+        kubeConfig.makeApiClient.withArgs(k8s.EventsV1Api).returns(apiClients[2]);
+
+        apiClients[0][apiGroupResourceFunction].returns({
+            response: {
+                body: apiGroups[0]
+            }
+        });
+
+        apiClients[1][apiGroupResourceFunction].returns({
+            response: {
+                body: apiGroups[1]
+            }
+        });
+
+        apiClients[2][apiResourcesFunction].returns({
+            response: {
+                body: resourceLists[0]
+            }
+        });
 
         subject = new K8sApi(kubeConfig);
     })
@@ -106,38 +124,39 @@ describe('k8s-api', () => {
 
     describe('_initClientMappings', () => {
 
-        it('should initialize the api version to api client map', async () => {
+        it('should provide a mapping from api version to api client', async () => {
 
-            const requestResult = {
-                response: {
-                    body: resourceList,
-                    statusCode: 200
-                },
-            };
+            await subject._initClientMappings(kubeConfig, apis);
 
-            const callback = sinon.stub();
-
-            apiClients[0][resourceFunctionName].returns(Promise.resolve(requestResult));
-
-            apiClients[1][resourceFunctionName].returns(Promise.resolve(requestResult));
-
-            await subject._forEachApiGroup(kubeConfig, callback, apis);
-
-            expect(apiClients[0][resourceFunctionName]).to.have.been.calledOnce;
-            expect(apiClients[1][resourceFunctionName]).to.have.been.calledOnce;
-            expect(callback).to.have.callCount(2);
+            expect(subject._apiVersionToApiClient[resourceLists[0].groupVersion]).to.equal(apiClients[2]);
         })
 
         it('should initialize the kind to api client map', async () => {
 
+            await subject._initClientMappings(kubeConfig, apis);
+
+            const mappedApis = subject._kindToApiClients[resourceLists[0].resources[0].kind.toLowerCase()];
+            expect(Array.isArray(mappedApis)).to.equal(true);
+            expect(mappedApis[0]).to.equal(apiClients[2]);
         })
 
         it('should initialize the kind to group version map', async () => {
 
+            await subject._initClientMappings(kubeConfig, apis);
+
+            const groupVersion = subject._kindToGroupVersion[resourceLists[0].resources[0].kind.toLowerCase()];
+            expect(groupVersion).to.equal(resourceLists[0].groupVersion);
         })
 
         it('should initialize the group version to preferred api version map', async () => {
 
+            await subject._initClientMappings(kubeConfig, apis);
+
+            for (const apiGroup of apiGroups) {
+                for (const entry of apiGroup.versions) {
+                    expect(subject._groupVersionToPreferredVersion[entry.groupVersion]).to.equal(apiGroup.preferredVersion.groupVersion);
+                }
+            }
         })
 
     })

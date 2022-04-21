@@ -37,6 +37,14 @@ class K8sApi {
     async _initClientMappings(kubeConfig, apis = k8s.APIS) {
 
         return Promise.all([
+            this._forEachApiGroup(kubeConfig, (_, apiGroup) => {
+                for (const entry of apiGroup.versions) {
+                    /**
+                     * Initialize group version to preferred api version.
+                     */
+                    this._groupVersionToPreferredVersion[entry.groupVersion] = apiGroup.preferredVersion.groupVersion;
+                }
+            }, apis),
             this._forEachApiResourceList(kubeConfig, (apiClient, resourceList) => {
 
                 /**
@@ -60,14 +68,6 @@ class K8sApi {
                      * Enable mapping of kind to group version for preferred version determination.
                      */
                     this._kindToGroupVersion[resourceKind] = resourceList.groupVersion;
-                }
-            }, apis),
-            this._forEachApiGroup(kubeConfig, (_, apiGroup) => {
-                for (const entry of apiGroup.versions) {
-                    /**
-                     * Initialize group version to preferred api version.
-                     */
-                    this._groupVersionToPreferredVersion[entry.groupVersion] = apiGroup.preferredVersion.groupVersion;
                 }
             }, apis)
         ]);
@@ -120,8 +120,6 @@ class K8sApi {
             }
 
             const {response: {body}} = await fetchResources.bind(apiClient)();
-
-            console.log(`Resource Fetch:\n\n${stringify(body)}`);
 
             callback(apiClient, body);
         }
