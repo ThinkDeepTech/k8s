@@ -1,4 +1,5 @@
 import k8s from '@kubernetes/client-node';
+import { k8sManifest } from '@thinkdeep/k8s-manifest';
 import chai from 'chai';
 import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
@@ -11,9 +12,14 @@ import {K8sApi} from '../src/k8s-api.mjs';
 
 describe('k8s-api', () => {
 
+    const apiGroupResourceFunction = 'getAPIGroup';
+    const apiResourcesFunction = 'getAPIResources';
+
     let apis;
     let apiClients;
     let kubeConfig;
+    let resourceLists;
+    let apiGroups;
     let subject;
     beforeEach(() => {
 
@@ -22,6 +28,60 @@ describe('k8s-api', () => {
             sinon.createStubInstance(k8s.AdmissionregistrationApi),
             sinon.createStubInstance(k8s.EventsApi),
             sinon.createStubInstance(k8s.EventsV1Api)
+        ];
+
+        resourceLists = [
+            k8sManifest(`
+                kind: APIResourceList
+                apiVersion: v1
+                groupVersion: events.k8s.io/v1beta1
+                resources:
+                  - name: events
+                    singularName: ''
+                    namespaced: true
+                    kind: Event
+                    verbs:
+                      - create
+                      - delete
+                      - deletecollection
+                      - get
+                      - list
+                      - patch
+                      - update
+                      - watch
+                    shortNames:
+                      - ev
+                    storageVersionHash: r2yiGXH7wu8=
+            `)
+        ];
+
+        apiGroups = [
+            k8sManifest(`
+                kind: APIGroup
+                apiVersion: v1
+                name: admissionregistration.k8s.io
+                versions:
+                  - groupVersion: admissionregistration.k8s.io/v1
+                    version: v1
+                  - groupVersion: admissionregistration.k8s.io/v1beta1
+                    version: v1beta1
+                preferredVersion:
+                  groupVersion: admissionregistration.k8s.io/v1
+                  version: v1
+            `),
+            k8sManifest(`
+                kind: APIGroup
+                apiVersion: v1
+                name: events.k8s.io
+                versions:
+                  - groupVersion: events.k8s.io/v1
+                    version: v1
+                  - groupVersion: events.k8s.io/v1beta1
+                    version: v1beta1
+                preferredVersion:
+                  groupVersion: events.k8s.io/v1
+                  version: v1
+            `)
         ];
 
         kubeConfig = sinon.createStubInstance(k8s.KubeConfig);
@@ -46,42 +106,27 @@ describe('k8s-api', () => {
 
     describe('_initClientMappings', () => {
 
-        const apiGroupResourceFunction = 'getAPIGroup';
-        const apiResourcesFunction = 'getAPIResources';
+        it('should initialize the api version to api client map', async () => {
 
-        beforeEach(() => {
-            const resource1 = new k8s.V1APIResource();
-            const resource2 = new k8s.V1APIResource();
-            const resource3 = new k8s.V1APIResource();
+            const requestResult = {
+                response: {
+                    body: resourceList,
+                    statusCode: 200
+                },
+            };
 
-            const resourceList = new k8s.V1APIResourceList();
-            resourceList.groupVersion = 'groupversion'
-            resourceList.apiVersion = 'apiversion';
-            resourceList.kind = 'APIResourceList';
-            resourceList.resources = [resource1, resource2, resource3];
+            const callback = sinon.stub();
+
+            apiClients[0][resourceFunctionName].returns(Promise.resolve(requestResult));
+
+            apiClients[1][resourceFunctionName].returns(Promise.resolve(requestResult));
+
+            await subject._forEachApiGroup(kubeConfig, callback, apis);
+
+            expect(apiClients[0][resourceFunctionName]).to.have.been.calledOnce;
+            expect(apiClients[1][resourceFunctionName]).to.have.been.calledOnce;
+            expect(callback).to.have.callCount(2);
         })
-
-        // it('should initialize the api version to api client map', async () => {
-
-        //     const requestResult = {
-        //         response: {
-        //             body: resourceList,
-        //             statusCode: 200
-        //         },
-        //     };
-
-        //     const callback = sinon.stub();
-
-        //     apiClients[0][resourceFunctionName].returns(Promise.resolve(requestResult));
-
-        //     apiClients[1][resourceFunctionName].returns(Promise.resolve(requestResult));
-
-        //     await subject._forEachApiGroup(kubeConfig, callback, apis);
-
-        //     expect(apiClients[0][resourceFunctionName]).to.have.been.calledOnce;
-        //     expect(apiClients[1][resourceFunctionName]).to.have.been.calledOnce;
-        //     expect(callback).to.have.callCount(2);
-        // })
 
         it('should initialize the kind to api client map', async () => {
 
@@ -99,7 +144,7 @@ describe('k8s-api', () => {
 
     describe('_forEachApiGroup', () => {
 
-        const resourceFunctionName = 'getAPIGroup';
+        const resourceFunctionName = apiGroupResourceFunction;
 
         it('should execute the correct k8s javascript api client function', async () => {
 
@@ -126,7 +171,7 @@ describe('k8s-api', () => {
 
     describe('_forEachApiResourceList', () => {
 
-        const resourceFunctionName = 'getAPIResources';
+        const resourceFunctionName = apiResourcesFunction;
 
         it('should execute the correct k8s javascript api client function', async () => {
 
