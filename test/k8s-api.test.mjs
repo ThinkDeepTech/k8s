@@ -9,6 +9,7 @@ chai.use(sinonChai);
 chai.use(chaiAsPromised);
 
 import {K8sApi} from '../src/k8s-api.mjs';
+import {k8sKind} from '../src/k8s-kind.mjs';
 
 describe('k8s-api', () => {
 
@@ -160,7 +161,7 @@ describe('k8s-api', () => {
 
             await subject._initClientMappings(kubeConfig, apis);
 
-            const mappedApis = subject._kindToApiClients[resourceLists[0].resources[0].kind.toLowerCase()];
+            const mappedApis = subject._kindToApiClients[k8sKind(resourceLists[0].resources[0].kind)];
             expect(Array.isArray(mappedApis)).to.equal(true);
             expect(mappedApis[0]).to.equal(apiClients[2]);
         })
@@ -169,7 +170,7 @@ describe('k8s-api', () => {
 
             await subject._initClientMappings(kubeConfig, apis);
 
-            const groupVersion = subject._kindToGroupVersion[resourceLists[0].resources[0].kind.toLowerCase()];
+            const groupVersion = subject._kindToGroupVersion[k8sKind(resourceLists[0].resources[0].kind)];
             expect(groupVersion).to.equal(resourceLists[0].groupVersion);
         })
 
