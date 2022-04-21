@@ -46,6 +46,59 @@ describe('k8s-api', () => {
         })
     })
 
+    describe('_initClientMappings', () => {
+
+        const apiGroupResourceFunction = 'getAPIGroup';
+        const apiResourcesFunction = 'getAPIResources';
+
+        beforeEach(() => {
+            const resource1 = new k8s.V1APIResource();
+            const resource2 = new k8s.V1APIResource();
+            const resource3 = new k8s.V1APIResource();
+
+            const resourceList = new k8s.V1APIResourceList();
+            resourceList.groupVersion = 'groupversion'
+            resourceList.apiVersion = 'apiversion';
+            resourceList.kind = 'APIResourceList';
+            resourceList.resources = [resource1, resource2, resource3];
+        })
+
+        // it('should initialize the api version to api client map', async () => {
+
+        //     const requestResult = {
+        //         response: {
+        //             body: resourceList,
+        //             statusCode: 200
+        //         },
+        //     };
+
+        //     const callback = sinon.stub();
+
+        //     apiClients[0][resourceFunctionName].returns(Promise.resolve(requestResult));
+
+        //     apiClients[1][resourceFunctionName].returns(Promise.resolve(requestResult));
+
+        //     await subject._forEachApiGroup(kubeConfig, callback, apis);
+
+        //     expect(apiClients[0][resourceFunctionName]).to.have.been.calledOnce;
+        //     expect(apiClients[1][resourceFunctionName]).to.have.been.calledOnce;
+        //     expect(callback).to.have.callCount(2);
+        // })
+
+        it('should initialize the kind to api client map', async () => {
+
+        })
+
+        it('should initialize the kind to group version map', async () => {
+
+        })
+
+        it('should initialize the group version to preferred api version map', async () => {
+
+        })
+
+    })
+
     describe('_forEachApiGroup', () => {
 
         const resourceFunctionName = 'getAPIGroup';
@@ -157,12 +210,6 @@ describe('k8s-api', () => {
         })
 
         it('should ignore cases where the resource function is not found', async () => {
-
-            /**
-             * These cases should be ignored because the k8s javascript client APIs don't
-             * all include the same functions. Therefore, when iterating over all the APIs,
-             * it's necessary to take that into account.
-             */
 
             const requestResult = {
                 response: {

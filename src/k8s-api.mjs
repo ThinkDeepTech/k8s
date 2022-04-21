@@ -5,7 +5,7 @@ import { k8sKind } from './k8s-kind.mjs';
 class K8sApi {
 
     constructor() {
-        this._apiVersionToApiClient = { };
+        this._apiVersionToApiClient = {};
         this._kindToApiClients = {};
         this._kindToGroupVersion = {};
         this._groupVersionToPreferredVersion = {};
@@ -33,7 +33,7 @@ class K8sApi {
             && (Object.keys(this._kindToGroupVersion).length > 0) && (Object.keys(this._groupVersionToPreferredVersion).length > 0);
     }
 
-    _initClientMappings(kubeConfig) {
+    async _initClientMappings(kubeConfig, apis = k8s.APIS) {
 
         return Promise.all([
             this._forEachApiResourceList(kubeConfig, (apiClient, resourceList) => {
@@ -60,7 +60,7 @@ class K8sApi {
                      */
                     this._kindToGroupVersion[resourceKind] = resourceList.groupVersion;
                 }
-            }),
+            }, apis),
             this._forEachApiGroup(kubeConfig, (_, apiGroup) => {
                 for (const entry of apiGroup.versions) {
                     /**
@@ -68,7 +68,7 @@ class K8sApi {
                      */
                     this._groupVersionToPreferredVersion[entry.groupVersion] = apiGroup.preferredVersion.groupVersion;
                 }
-            })
+            }, apis)
         ]);
     };
 
@@ -103,6 +103,12 @@ class K8sApi {
             const apiClient = kubeConfig.makeApiClient(api);
 
             if (!(resourceFunctionName in apiClient)) {
+
+                /**
+                 * These cases should be ignored because the k8s javascript client APIs don't
+                 * all include the same functions. Therefore, when iterating over all the APIs,
+                 * it's necessary to take that into account.
+                 */
                 continue;
             }
 
