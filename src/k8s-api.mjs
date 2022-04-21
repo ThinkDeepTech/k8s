@@ -1,5 +1,4 @@
 import k8s from '@kubernetes/client-node';
-import { stringify } from '@thinkdeep/k8s-manifest';
 import {ErrorNotFound} from './error/error-not-found.mjs'
 import { k8sKind } from './k8s-kind.mjs';
 
@@ -12,12 +11,11 @@ class K8sApi {
         this._groupVersionToPreferredVersion = {};
     }
 
-    // TODO : JSDoc for apis in each function using it.
-
     /**
      * Initialize the api maps.
      *
-     * @param {Object} kubeConfig - K8s javascript client KubeConfig object.
+     * @param {Object} kubeConfig K8s javascript client KubeConfig object.
+     * @param {Array<any>} [apis = k8s.APIS] The k8s API objects to use. This is intended for testing.
      */
     async init(kubeConfig, apis = k8s.APIS) {
         if (!this.initialized()) {
@@ -56,7 +54,7 @@ class K8sApi {
 
                 for (const resource of resourceList.resources) {
 
-                    const resourceKind = resource.kind.toLowerCase();
+                    const resourceKind = k8sKind(resource.kind);
                     if (!this._kindToApiClients[resourceKind]) {
                         this._kindToApiClients[resourceKind] = [];
                     }
@@ -74,14 +72,6 @@ class K8sApi {
             }, apis)
         ]);
     };
-
-    _clientApis(kind) {
-        return this._kindToApiClients[kind.toLowerCase()] || [];
-    }
-
-    _clientApi(apiVersion) {
-        return this._apiVersionToApiClient[apiVersion.toLowerCase()] || null;
-    }
 
     async _forEachApiGroup(kubeConfig, callback, apis = k8s.APIS) {
         await this._forEachApi(kubeConfig, 'getAPIGroup', callback, apis);
@@ -127,6 +117,14 @@ class K8sApi {
         }
     }
 
+    _clientApis(kind) {
+        return this._kindToApiClients[k8sKind(kind)] || [];
+    }
+
+    _clientApi(apiVersion) {
+        return this._apiVersionToApiClient[apiVersion.toLowerCase()] || null;
+    }
+
     /**
      * Get the preferred api version.
      *
@@ -135,7 +133,7 @@ class K8sApi {
      */
     preferredVersion(kind) {
 
-        const kindGroup = this._kindToGroupVersion[kind.toLowerCase()];
+        const kindGroup = this._kindToGroupVersion[k8sKind(kind)];
 
         if (!kindGroup) {
             throw new Error(`The kind ${kind} didn't have a registered group version.`);
@@ -144,7 +142,7 @@ class K8sApi {
         const targetVersion = this._groupVersionToPreferredVersion[kindGroup];
 
         if (!targetVersion) {
-            throw new Error(`The kind ${kind} didn't have a registered preferred version. Received: ${version}`);
+            throw new Error(`The kind ${kind} with group version ${kindGroup} didn't have a registered preferred version.`);
         }
 
         return targetVersion;
@@ -153,13 +151,15 @@ class K8sApi {
     /**
      * Determine if the specified object exists on the cluster.
      *
-     * @param {String} kind K8s kind.
+     * @param {String} prospectiveKind K8s kind.
      * @param {String} name K8s object metadata name.
      * @param {String} namespace K8s namespace.
      *
      * @returns True if the object exists on the cluster. False otherwise.
      */
-    async exists(kind, name, namespace) {
+    async exists(prospectiveKind, name, namespace) {
+
+        const kind = k8sKind(prospectiveKind);
         try {
             await this.read(kind, name, namespace);
             return true;
@@ -198,7 +198,7 @@ class K8sApi {
 
     _creationStrategy(manifest) {
 
-        const kind = k8sKind(manifest.kind.toLowerCase());
+        const kind = k8sKind(manifest.kind);
         const api = this._clientApi(manifest.apiVersion);
         if (api[`createNamespaced${kind}`]) {
 
@@ -218,13 +218,15 @@ class K8sApi {
      *
      * NOTE: If the object doesn't exist on the cluster a ErrorNotFound exception will be thrown.
      *
-     * @param {String} kind The k8s kind (i.e, CronJob).
+     * @param {String} prospectiveKind The k8s kind (i.e, CronJob).
      * @param {String} name The name of the object as seen in the k8s metadata name field.
      * @param {String} namespace The k8s object's namespace.
      *
      * @returns A kubernetes javascript client representation of the object on the cluster.
      */
-    async read(kind, name, namespace) {
+    async read(prospectiveKind, name, namespace) {
+
+        const kind = k8sKind(prospectiveKind);
         const results = await this._readStrategy(kind, name, namespace)();
 
         if (results.length === 0) {
@@ -236,7 +238,7 @@ class K8sApi {
     }
 
     _readStrategy(prospectiveKind, name, namespace) {
-        const kind = k8sKind(prospectiveKind.toLowerCase());
+        const kind = k8sKind(prospectiveKind);
 
         const apis = this._clientApis(kind);
 
@@ -248,8 +250,9 @@ class K8sApi {
         return this._handleStrategyExecution.bind(this, strategies);
     }
 
-    _readKindThroughApiStrategy(api, kind, name, namespace) {
+    _readKindThroughApiStrategy(api, prospectiveKind, name, namespace) {
 
+        const kind = k8sKind(prospectiveKind);
         if (api[`read${kind}`]) {
 
             return api[`read${kind}`].bind(api, name);
@@ -290,7 +293,7 @@ class K8sApi {
 
     _patchStrategy(manifest) {
 
-        const kind = k8sKind(manifest.kind.toLowerCase());
+        const kind = k8sKind(manifest.kind);
 
         const apis = this._clientApis(kind);
 
@@ -302,7 +305,7 @@ class K8sApi {
         return this._handleStrategyExecution.bind(this, strategies);
     }
 
-    _patchKindThroughApiStrategy(api, kind, manifest) {
+    _patchKindThroughApiStrategy(api, prospectiveKind, manifest) {
 
         const pretty = undefined;
 
@@ -318,6 +321,7 @@ class K8sApi {
             }
         };
 
+        const kind = k8sKind(prospectiveKind);
         if (api[`patchNamespaced${kind}`]) {
 
             return api[`patchNamespaced${kind}`].bind(
@@ -368,7 +372,7 @@ class K8sApi {
 
     _listStrategy(prospectiveKind, namespace) {
 
-        const kind = k8sKind(prospectiveKind.toLowerCase());
+        const kind = k8sKind(prospectiveKind);
         const apis = this._clientApis(kind);
 
         let strategies = [];
@@ -381,7 +385,9 @@ class K8sApi {
         return gatherAllKindLists.bind(null, strategies);
     }
 
-    _listKindThroughApiStrategy(api, kind, namespace) {
+    _listKindThroughApiStrategy(api, prospectiveKind, namespace) {
+
+        const kind = k8sKind(prospectiveKind);
         if (!namespace && api[`list${kind}ForAllNamespaces`]) {
 
             return api[`list${kind}ForAllNamespaces`].bind(api);
@@ -422,12 +428,13 @@ class K8sApi {
             throw new Error(`The manifest requires an api version.`);
         }
 
-        const kind = k8sKind(manifest.kind.toLowerCase());
         const api = this._clientApi(manifest.apiVersion);
-        return this._handleStrategyExecution.bind(this, [this._deleteKindThroughApiStrategy(api, kind, manifest)]);
+        return this._handleStrategyExecution.bind(this, [this._deleteKindThroughApiStrategy(api, k8sKind(manifest.kind), manifest)]);
     }
 
-    _deleteKindThroughApiStrategy(api, kind, manifest) {
+    _deleteKindThroughApiStrategy(api, prospectiveKind, manifest) {
+
+        const kind = k8sKind(prospectiveKind);
         if (api[`deleteNamespaced${kind}`]) {
 
             return api[`deleteNamespaced${kind}`].bind(api, manifest.metadata.name, manifest.metadata.namespace);
