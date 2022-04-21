@@ -151,17 +151,17 @@ class K8sApi {
     /**
      * Determine if the specified object exists on the cluster.
      *
-     * @param {String} prospectiveKind K8s kind.
+     * @param {String} kind K8s kind.
      * @param {String} name K8s object metadata name.
      * @param {String} namespace K8s namespace.
      *
      * @returns True if the object exists on the cluster. False otherwise.
      */
-    async exists(prospectiveKind, name, namespace) {
+    async exists(kind, name, namespace) {
 
-        const kind = k8sKind(prospectiveKind);
+        const _kind = k8sKind(kind);
         try {
-            await this.read(kind, name, namespace);
+            await this.read(_kind, name, namespace);
             return true;
         } catch (e) {
             if (e.constructor.name !== 'ErrorNotFound') {
@@ -218,16 +218,16 @@ class K8sApi {
      *
      * NOTE: If the object doesn't exist on the cluster a ErrorNotFound exception will be thrown.
      *
-     * @param {String} prospectiveKind The k8s kind (i.e, CronJob).
+     * @param {String} kind The k8s kind (i.e, CronJob).
      * @param {String} name The name of the object as seen in the k8s metadata name field.
      * @param {String} namespace The k8s object's namespace.
      *
      * @returns A kubernetes javascript client representation of the object on the cluster.
      */
-    async read(prospectiveKind, name, namespace) {
+    async read(kind, name, namespace) {
 
-        const kind = k8sKind(prospectiveKind);
-        const results = await this._readStrategy(kind, name, namespace)();
+        const _kind = k8sKind(kind);
+        const results = await this._readStrategy(_kind, name, namespace)();
 
         if (results.length === 0) {
             const namespaceMessage = !!namespace ? ` in namespace ${namespace}` : ``;
@@ -237,28 +237,29 @@ class K8sApi {
         return results.map((received) => this._configuredManifest(received.response.body))[0];
     }
 
-    _readStrategy(prospectiveKind, name, namespace) {
-        const kind = k8sKind(prospectiveKind);
+    _readStrategy(kind, name, namespace) {
 
-        const apis = this._clientApis(kind);
+        const _kind = k8sKind(kind);
+
+        const apis = this._clientApis(_kind);
 
         let strategies = [];
         for (const api of apis) {
-            strategies.push(this._readKindThroughApiStrategy(api, kind, name, namespace));
+            strategies.push(this._readKindThroughApiStrategy(api, _kind, name, namespace));
         }
 
         return this._handleStrategyExecution.bind(this, strategies);
     }
 
-    _readKindThroughApiStrategy(api, prospectiveKind, name, namespace) {
+    _readKindThroughApiStrategy(api, kind, name, namespace) {
 
-        const kind = k8sKind(prospectiveKind);
-        if (api[`read${kind}`]) {
+        const _kind = k8sKind(kind);
+        if (api[`read${_kind}`]) {
 
-            return api[`read${kind}`].bind(api, name);
-        } else if (!!namespace && api[`readNamespaced${kind}`]) {
+            return api[`read${_kind}`].bind(api, name);
+        } else if (!!namespace && api[`readNamespaced${_kind}`]) {
 
-            return api[`readNamespaced${kind}`].bind(api, name, namespace);
+            return api[`readNamespaced${_kind}`].bind(api, name, namespace);
         } else {
 
             const namespaceText = namespace ? `and namespace ${namespace}` : ``;
@@ -305,7 +306,7 @@ class K8sApi {
         return this._handleStrategyExecution.bind(this, strategies);
     }
 
-    _patchKindThroughApiStrategy(api, prospectiveKind, manifest) {
+    _patchKindThroughApiStrategy(api, kind, manifest) {
 
         const pretty = undefined;
 
@@ -321,16 +322,16 @@ class K8sApi {
             }
         };
 
-        const kind = k8sKind(prospectiveKind);
-        if (api[`patchNamespaced${kind}`]) {
+        const _kind = k8sKind(kind);
+        if (api[`patchNamespaced${_kind}`]) {
 
-            return api[`patchNamespaced${kind}`].bind(
+            return api[`patchNamespaced${_kind}`].bind(
                 api, manifest.metadata.name, manifest.metadata.namespace, manifest,
                 pretty, dryRun, fieldManager, force, options
                 );
-        } else if (api[`patch${kind}`]) {
+        } else if (api[`patch${_kind}`]) {
 
-            return api[`patch${kind}`].bind(
+            return api[`patch${_kind}`].bind(
                 api, manifest.metadata.name, manifest,
                 pretty, dryRun, fieldManager, force, options);
         } else {
@@ -370,14 +371,14 @@ class K8sApi {
         }));
     }
 
-    _listStrategy(prospectiveKind, namespace) {
+    _listStrategy(kind, namespace) {
 
-        const kind = k8sKind(prospectiveKind);
+        const _kind = k8sKind(kind);
         const apis = this._clientApis(kind);
 
         let strategies = [];
         for (const api of apis) {
-            strategies.push(this._listKindThroughApiStrategy(api, kind, namespace));
+            strategies.push(this._listKindThroughApiStrategy(api, _kind, namespace));
         }
 
         const gatherAllKindLists = (stgs) => Promise.all(stgs.map((strategy) =>  strategy()));
@@ -385,15 +386,15 @@ class K8sApi {
         return gatherAllKindLists.bind(null, strategies);
     }
 
-    _listKindThroughApiStrategy(api, prospectiveKind, namespace) {
+    _listKindThroughApiStrategy(api, kind, namespace) {
 
-        const kind = k8sKind(prospectiveKind);
-        if (!namespace && api[`list${kind}ForAllNamespaces`]) {
+        const _kind = k8sKind(kind);
+        if (!namespace && api[`list${_kind}ForAllNamespaces`]) {
 
-            return api[`list${kind}ForAllNamespaces`].bind(api);
-        } else if (!!namespace && api[`listNamespaced${kind}`]) {
+            return api[`list${_kind}ForAllNamespaces`].bind(api);
+        } else if (!!namespace && api[`listNamespaced${_kind}`]) {
 
-            return api[`listNamespaced${kind}`].bind(api, namespace);
+            return api[`listNamespaced${_kind}`].bind(api, namespace);
         } else {
 
             const namespaceText = namespace ? `and namespace ${namespace}` : ``;
@@ -432,15 +433,15 @@ class K8sApi {
         return this._handleStrategyExecution.bind(this, [this._deleteKindThroughApiStrategy(api, k8sKind(manifest.kind), manifest)]);
     }
 
-    _deleteKindThroughApiStrategy(api, prospectiveKind, manifest) {
+    _deleteKindThroughApiStrategy(api, kind, manifest) {
 
-        const kind = k8sKind(prospectiveKind);
-        if (api[`deleteNamespaced${kind}`]) {
+        const _kind = k8sKind(kind);
+        if (api[`deleteNamespaced${_kind}`]) {
 
-            return api[`deleteNamespaced${kind}`].bind(api, manifest.metadata.name, manifest.metadata.namespace);
-        } else if (api[`delete${kind}`]) {
+            return api[`deleteNamespaced${_kind}`].bind(api, manifest.metadata.name, manifest.metadata.namespace);
+        } else if (api[`delete${_kind}`]) {
 
-            return api[`delete${kind}`].bind(api, manifest.metadata.name);
+            return api[`delete${_kind}`].bind(api, manifest.metadata.name);
         } else {
             throw new Error(`
                 The deletion function for kind ${kind} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
