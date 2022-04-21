@@ -1,5 +1,4 @@
 import k8s from '@kubernetes/client-node';
-import { k8sManifest } from '@thinkdeep/k8s-manifest';
 import chai from 'chai';
 import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
@@ -9,7 +8,6 @@ chai.use(sinonChai);
 chai.use(chaiAsPromised);
 
 import {K8sApi} from '../src/k8s-api.mjs';
-import { ErrorNotFound } from '../src/error/error-not-found.mjs';
 
 describe('k8s-api', () => {
 

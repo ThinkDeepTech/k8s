@@ -115,13 +115,13 @@ class K8sApi {
 
             const fetchResources = apiClient[resourceFunctionName];
 
-            if (!(typeof fetchResources === 'function')) {
+            if (typeof fetchResources !== 'function') {
                 throw new Error(`The resource function provided was not a function: ${resourceFunctionName}`);
             }
 
             const {response: {body}} = await fetchResources.bind(apiClient)();
 
-            console.log(stringify(body));
+            console.log(`Resource Fetch:\n\n${stringify(body)}`);
 
             callback(apiClient, body);
         }
