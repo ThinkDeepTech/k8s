@@ -1,59 +1,76 @@
 import k8s from '@kubernetes/client-node';
+import { stringify } from '@thinkdeep/k8s-manifest';
 import {ErrorNotFound} from './error/error-not-found.mjs'
 import { k8sKind } from './k8s-kind.mjs';
-import { k8sManifest } from './k8s-manifest.mjs';
 
 class K8sApi {
 
     constructor() {
-        this._apiVersionToApiClient = { };
+        this._apiVersionToApiClient = {};
         this._kindToApiClients = {};
         this._kindToGroupVersion = {};
         this._groupVersionToPreferredVersion = {};
     }
 
+    /**
+     * Initialize the api maps.
+     *
+     * @param {Object} kubeConfig - K8s javascript client KubeConfig object.
+     */
     async init(kubeConfig) {
         if (!this.initialized()) {
-            await Promise.all([
-                this._initKindMaps(kubeConfig),
-                this._initApiVersionToApiClientMap(kubeConfig)
-            ]);
+            await this._initClientMappings(kubeConfig);
             console.log(`Initialized the k8s api.`);
         }
     };
 
+    /**
+     * Determine if the api has been initialized.
+     *
+     * @returns True if initialized. False otherwise.
+     */
     initialized() {
         return (Object.keys(this._apiVersionToApiClient).length > 0) && (Object.keys(this._kindToApiClients).length > 0)
             && (Object.keys(this._kindToGroupVersion).length > 0) && (Object.keys(this._groupVersionToPreferredVersion).length > 0);
     }
 
-    async _initApiVersionToApiClientMap(kubeConfig) {
-        await this._forEachApiResourceList(kubeConfig, (apiClient, resourceList) => {
-            this._apiVersionToApiClient[resourceList.groupVersion.toLowerCase()] = apiClient;
-        })
-    }
+    async _initClientMappings(kubeConfig, apis = k8s.APIS) {
 
-    async _initKindMaps(kubeConfig) {
+        return Promise.all([
+            this._forEachApiResourceList(kubeConfig, (apiClient, resourceList) => {
 
-        await this._forEachApiResourceList(kubeConfig, (apiClient, resourceList) => {
+                /**
+                 * Initialize apiVersion-specific client mappings.
+                 */
+                this._apiVersionToApiClient[resourceList.groupVersion.toLowerCase()] = apiClient;
 
-            for (const resource of resourceList.resources) {
+                for (const resource of resourceList.resources) {
 
-                const resourceKind = resource.kind.toLowerCase();
-                if (!this._kindToApiClients[resourceKind]) {
-                    this._kindToApiClients[resourceKind] = [];
+                    const resourceKind = resource.kind.toLowerCase();
+                    if (!this._kindToApiClients[resourceKind]) {
+                        this._kindToApiClients[resourceKind] = [];
+                    }
+
+                    /**
+                     * Initialize broadcast capability based on kind.
+                     */
+                    this._kindToApiClients[resourceKind].push(apiClient);
+
+                    /**
+                     * Enable mapping of kind to group version for preferred version determination.
+                     */
+                    this._kindToGroupVersion[resourceKind] = resourceList.groupVersion;
                 }
-
-                this._kindToApiClients[resourceKind].push(apiClient);
-
-                this._kindToGroupVersion[resourceKind] = resourceList.groupVersion;
-            }
-        });
-        await this._forEachApiGroup(kubeConfig, (_, apiGroup) => {
-            for (const entry of apiGroup.versions) {
-                this._groupVersionToPreferredVersion[entry.groupVersion] = apiGroup.preferredVersion.groupVersion;
-            }
-        });
+            }, apis),
+            this._forEachApiGroup(kubeConfig, (_, apiGroup) => {
+                for (const entry of apiGroup.versions) {
+                    /**
+                     * Initialize group version to preferred api version.
+                     */
+                    this._groupVersionToPreferredVersion[entry.groupVersion] = apiGroup.preferredVersion.groupVersion;
+                }
+            }, apis)
+        ]);
     };
 
     _clientApis(kind) {
@@ -64,38 +81,58 @@ class K8sApi {
         return this._apiVersionToApiClient[apiVersion.toLowerCase()] || null;
     }
 
-    async _forEachApiGroup(kubeConfig, callback) {
-        await this._forEachApi(kubeConfig, 'getAPIGroup', callback);
+    async _forEachApiGroup(kubeConfig, callback, apis = k8s.APIS) {
+        await this._forEachApi(kubeConfig, 'getAPIGroup', callback, apis);
     }
 
-    async _forEachApiResourceList(kubeConfig, callback) {
-        await this._forEachApi(kubeConfig, 'getAPIResources', callback);
+    async _forEachApiResourceList(kubeConfig, callback, apis = k8s.APIS) {
+        await this._forEachApi(kubeConfig, 'getAPIResources', callback, apis);
     }
 
-    async _forEachApi(kubeConfig, resourceFunctionName, callback) {
-        for (const api of k8s.APIS) {
+    async _forEachApi(kubeConfig, resourceFunctionName, callback, apis) {
+
+        if (!(kubeConfig instanceof k8s.KubeConfig)) {
+            throw new Error(`Supplied k8s kube configuration was invalid.`);
+        }
+
+        if (!Array.isArray(apis)) {
+            throw new Error(`Supplied APIs must be an array.`);
+        }
+
+        for (const api of apis) {
 
             const apiClient = kubeConfig.makeApiClient(api);
 
+            if (!(resourceFunctionName in apiClient)) {
+
+                /**
+                 * These cases should be ignored because the k8s javascript client APIs don't
+                 * all include the same functions. Therefore, when iterating over all the APIs,
+                 * it's necessary to take that into account.
+                 */
+                continue;
+            }
+
             const fetchResources = apiClient[resourceFunctionName];
 
-            if (typeof fetchResources === 'function') {
-
-                try {
-                    const {response: {body}} = await fetchResources.bind(apiClient)();
-
-                    callback(apiClient, k8sManifest(body));
-                } catch (e) {
-
-                    const {response: {statusCode}} = e;
-                    if (statusCode !== 404) {
-                        throw e;
-                    }
-                }
+            if (typeof fetchResources !== 'function') {
+                throw new Error(`The resource function provided was not a function: ${resourceFunctionName}`);
             }
+
+            const {response: {body}} = await fetchResources.bind(apiClient)();
+
+            console.log(`Resource Fetch:\n\n${stringify(body)}`);
+
+            callback(apiClient, body);
         }
     }
 
+    /**
+     * Get the preferred api version.
+     *
+     * @param {String} kind Kind for which the preferred version is desired.
+     * @returns Preferred api version for specified kind.
+     */
     preferredVersion(kind) {
 
         const kindGroup = this._kindToGroupVersion[kind.toLowerCase()];
@@ -113,6 +150,15 @@ class K8sApi {
         return targetVersion;
     }
 
+    /**
+     * Determine if the specified object exists on the cluster.
+     *
+     * @param {String} kind K8s kind.
+     * @param {String} name K8s object metadata name.
+     * @param {String} namespace K8s namespace.
+     *
+     * @returns True if the object exists on the cluster. False otherwise.
+     */
     async exists(kind, name, namespace) {
         try {
             await this.read(kind, name, namespace);
@@ -125,6 +171,12 @@ class K8sApi {
         }
     }
 
+    /**
+     *  Create all objects on the cluster.
+     *
+     * @param {Array<any>} manifests K8s javascript client objects.
+     * @returns K8s client objects or [] if the objects already exist.
+     */
     async createAll(manifests) {
         return (await Promise.all(manifests.map(async(manifest) => {
             try {
@@ -161,6 +213,17 @@ class K8sApi {
         }
     }
 
+    /**
+     * Read an object from the cluster.
+     *
+     * NOTE: If the object doesn't exist on the cluster a ErrorNotFound exception will be thrown.
+     *
+     * @param {String} kind The k8s kind (i.e, CronJob).
+     * @param {String} name The name of the object as seen in the k8s metadata name field.
+     * @param {String} namespace The k8s object's namespace.
+     *
+     * @returns A kubernetes javascript client representation of the object on the cluster.
+     */
     async read(kind, name, namespace) {
         const results = await this._readStrategy(kind, name, namespace)();
 
@@ -203,6 +266,12 @@ class K8sApi {
         }
     }
 
+    /**
+     * Update the cluster objects with the specified manifests.
+     *
+     * @param {Array<any>} manifests K8s javascript client objects.
+     * @returns K8s client objects.
+     */
     patchAll(manifests) {
         return Promise.all(manifests.map(async(manifest) => {
 
@@ -267,6 +336,13 @@ class K8sApi {
         }
     }
 
+    /**
+     * List all cluster objects.
+     *
+     * @param {String} kind The k8s kind (i.e, CronJob).
+     * @param {String} namespace The namespace of the object as seen in the k8s metadata namespace field.
+     * @returns Array of kind list objects (i.e, CronJobList).
+     */
     async listAll(kind, namespace) {
 
         const responses = await this._listStrategy(kind, namespace)();
@@ -279,16 +355,14 @@ class K8sApi {
                 throw new Error(`The API response didn't include a valid body. Received: ${body}`);
             }
 
-            const listManifest = k8sManifest(body);
+            for (let i = 0; i < body.items.length; i++) {
+                body.items[i].apiVersion = body.apiVersion;
 
-            for (let i = 0; i < listManifest.items.length; i++) {
-                listManifest.items[i].apiVersion = listManifest.apiVersion;
-
-                const itemTypeName = listManifest.items[i].constructor.name || '';
-                listManifest.items[i].kind = k8sKind(itemTypeName.toLowerCase());
+                const itemTypeName = body.items[i].constructor.name || '';
+                body.items[i].kind = k8sKind(itemTypeName.toLowerCase());
             }
 
-            return listManifest;
+            return body;
         }));
     }
 
@@ -325,7 +399,11 @@ class K8sApi {
     }
 
 
-
+    /**
+     * Delete all the specified objects on the cluster.
+     *
+     * @param {Array<any>} manifests K8s javascript client objects.
+     */
     deleteAll(manifests) {
         return Promise.all(manifests.map((manifest) => this._deletionStrategy(manifest)()));
     }
@@ -381,13 +459,11 @@ class K8sApi {
 
     _configuredManifest(configuration) {
 
-        const manifest = k8sManifest(configuration);
-
-        if (!manifest.kind) {
-            manifest.kind = k8sKind(manifest.constructor.name);
+        if (!configuration.kind) {
+            configuration.kind = k8sKind(configuration.constructor.name);
         }
 
-        return manifest;
+        return configuration;
     }
 };
 

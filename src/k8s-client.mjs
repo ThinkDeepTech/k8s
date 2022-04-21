@@ -1,14 +1,19 @@
-import k8s from '@kubernetes/client-node';
 import {K8sApi} from './k8s-api.mjs';
-import {k8sManifest, stringify} from './k8s-manifest.mjs';
-import yaml from "yaml";
+import {k8sManifest, stringify} from '@thinkdeep/k8s-manifest';
+
+const createApi = () => {
+    return new K8sApi();
+};
 
 class K8sClient {
 
-    constructor() {
-        this._kubeConfig = new k8s.KubeConfig();
-        this._kubeConfig.loadFromCluster();
-        this._api = new K8sApi();
+    /**
+     * @param {KubeConfig} kubeConfig Kubernetes javascript client KubeConfig to apply.
+     * @param {K8sApi} api K8sApi object. The presence of this parameter is primarily for testing.
+     */
+    constructor(kubeConfig, api = createApi()) {
+        this._kubeConfig = kubeConfig;
+        this._api = api;
     }
 
     /**
@@ -23,6 +28,16 @@ class K8sClient {
         await this._api.init(this._kubeConfig);
 
         return this;
+    }
+
+    /**
+     * Get the cluster preferred api version.
+     *
+     * @param {String} kind Kind for which the preferred version is desired.
+     * @returns Preferred api version for specified kind.
+     */
+    preferredVersion(kind) {
+        return this._api.preferredVersion(kind);
     }
 
     /**
@@ -62,7 +77,7 @@ class K8sClient {
      */
     async create (configuration) {
 
-        const manifest = this._manifest(configuration);
+        const manifest = k8sManifest(configuration);
 
         return (await this._api.createAll([manifest]))[0] || manifest;
     }
@@ -91,7 +106,7 @@ class K8sClient {
      */
     async apply(configuration) {
 
-        const manifest = this._manifest(configuration);
+        const manifest = k8sManifest(configuration);
 
         const alreadyExists = await this.exists(manifest.kind, manifest.metadata.name, manifest.metadata.namespace);
         if (!alreadyExists) {
@@ -101,20 +116,6 @@ class K8sClient {
         const modifiedManifests = await this._api.patchAll([manifest]);
 
         return modifiedManifests[0];
-    }
-
-    /**
-     * Get an object from the cluster.
-     *
-     * NOTE: If the object doesn't exist on the cluster a ErrorNotFound exception will be thrown.
-     *
-     * @param {String} kind The k8s kind (i.e, CronJob).
-     * @param {String} name The name of the object as seen in the k8s metadata name field.
-     * @param {String} namespace The k8s object's namespace.
-     * @returns A kubernetes javascript client representation of the object on the cluster.
-     */
-    async get(kind, name, namespace) {
-        return this._api.read(kind, name, namespace);
     }
 
     /**
@@ -139,6 +140,31 @@ class K8sClient {
     }
 
     /**
+     * Get an object from the cluster.
+     *
+     * NOTE: If the object doesn't exist on the cluster a ErrorNotFound exception will be thrown.
+     *
+     * @param {String} kind The k8s kind (i.e, CronJob).
+     * @param {String} name The name of the object as seen in the k8s metadata name field.
+     * @param {String} namespace The k8s object's namespace.
+     * @returns A kubernetes javascript client representation of the object on the cluster.
+     */
+    async get(kind, name, namespace) {
+        return this._api.read(kind, name, namespace);
+    }
+
+    /**
+     * Delete all the specified objects on the k8s cluster.
+     *
+     * @param {Array<any>} manifests - K8s javascript client objects representing the cluster objects to be deleted.
+     */
+    async deleteAll(manifests) {
+        for (const manifest of manifests) {
+            await this.delete(manifest);
+        }
+    }
+
+    /**
      * Delete an object from your cluster.
      *
      * @param {any} manifest The kubernetes javascript client representation of the object you want to delete. Remember to include a valid kind and apiVersion.
@@ -146,16 +172,6 @@ class K8sClient {
      */
     async delete (manifest) {
         await this._api.deleteAll([manifest]);
-    }
-
-    _parse(yamlString) {
-        const parsedYaml = yaml.parse(yamlString);
-
-        return k8sManifest(parsedYaml);
-    }
-
-    _manifest(configuration) {
-        return (typeof configuration === 'string') ? this._parse(configuration) : configuration;
     }
 }
 

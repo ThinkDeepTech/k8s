@@ -1,5 +1,5 @@
 # k8s
-Simple interface wrapping the kubernetes javascript client.
+K8s node client for processing template string yaml configurations instead of value assignment to k8s javascript client object properties (i.e, V1CronJob).
 
 # Dependencies
 - [Kubernetes javascript client](https://github.com/kubernetes-client/javascript) v0.15
@@ -16,9 +16,13 @@ Assuming the role binding linking the necessary role and service account has the
 
 ```javascript
 
-    import { K8sClient, stringify } from '@thinkdeep/k8s';
+    import { K8sClient, KubeConfig, stringify } from '@thinkdeep/k8s';
 
-    const client = await new K8sClient().init();
+    const config = new KubeConfig(); // KubeConfig exported directly from https://github.com/kubernetes-client/javascript
+
+    config.loadFromCluster(); // Or whatever desired loading mechanism
+
+    const client = await new K8sClient(config).init();
 
     const options = {
         name: 'dynamic-cron-job',
