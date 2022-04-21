@@ -12,14 +12,16 @@ class K8sApi {
         this._groupVersionToPreferredVersion = {};
     }
 
+    // TODO : JSDoc for apis in each function using it.
+
     /**
      * Initialize the api maps.
      *
      * @param {Object} kubeConfig - K8s javascript client KubeConfig object.
      */
-    async init(kubeConfig) {
+    async init(kubeConfig, apis = k8s.APIS) {
         if (!this.initialized()) {
-            await this._initClientMappings(kubeConfig);
+            await this._initClientMappings(kubeConfig, apis);
             console.log(`Initialized the k8s api.`);
         }
     };

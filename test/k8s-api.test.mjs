@@ -108,17 +108,42 @@ describe('k8s-api', () => {
             }
         });
 
-        subject = new K8sApi(kubeConfig);
+        subject = new K8sApi();
     })
 
     describe('init', () => {
 
         it('should only initialize once', async () => {
+            await subject.init(kubeConfig, apis);
 
+            await subject.init(kubeConfig, apis);
+
+            await subject.init(kubeConfig, apis);
+
+            /**
+             * The makeApiClient function is called once for each call to _forEachApi.
+             * Therefore, it should be called twice for each function in _initClientMappings.
+             */
+            expect(kubeConfig.makeApiClient).to.have.callCount(2 * apiClients.length);
         })
 
         it('should initialize kind maps', async () => {
+            await subject.init(kubeConfig, apis);
 
+            expect(subject.initialized()).to.equal(true);
+        })
+    })
+
+    describe('initialized', () => {
+
+        it('should indicate that it is initialized if the maps are set', async () => {
+            await subject.init(kubeConfig, apis);
+
+            expect(subject.initialized()).to.equal(true);
+        })
+
+        it('should indicate that it is not initialized if the maps are not set', async () => {
+            expect(subject.initialized()).to.equal(false);
         })
     })
 
@@ -131,7 +156,7 @@ describe('k8s-api', () => {
             expect(subject._apiVersionToApiClient[resourceLists[0].groupVersion]).to.equal(apiClients[2]);
         })
 
-        it('should initialize the kind to api client map', async () => {
+        it('should provide a mapping from k8s kind to api clients for broadcast', async () => {
 
             await subject._initClientMappings(kubeConfig, apis);
 
@@ -140,7 +165,7 @@ describe('k8s-api', () => {
             expect(mappedApis[0]).to.equal(apiClients[2]);
         })
 
-        it('should initialize the kind to group version map', async () => {
+        it('should provide a mapping from kind to group', async () => {
 
             await subject._initClientMappings(kubeConfig, apis);
 
@@ -148,7 +173,7 @@ describe('k8s-api', () => {
             expect(groupVersion).to.equal(resourceLists[0].groupVersion);
         })
 
-        it('should initialize the group version to preferred api version map', async () => {
+        it('should provide a map from group to preferred version', async () => {
 
             await subject._initClientMappings(kubeConfig, apis);
 
