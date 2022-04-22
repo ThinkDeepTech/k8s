@@ -40,9 +40,7 @@ class K8sApi {
 
     _applyPreferredVersionToGroupMap(_, apiGroup) {
 
-        if (apiGroup.name === 'v1') {
-            console.warn(`Found V1 API Group:\n\n${stringify(apiGroup)}`);
-        }
+        console.warn(`Found API Group:\n\n${stringify(apiGroup)}`);
 
         for (const entry of apiGroup.versions) {
             /**
