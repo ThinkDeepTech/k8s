@@ -1,5 +1,5 @@
 import k8s from '@kubernetes/client-node';
-import { stringify } from '@thinkdeep/k8s-manifest';
+import { k8sManifest, stringify } from '@thinkdeep/k8s-manifest';
 import {ErrorNotFound} from './error/error-not-found.mjs'
 import { k8sKind } from './k8s-kind.mjs';
 
@@ -43,9 +43,13 @@ class K8sApi {
          */
         this._apiVersionToApiClient[resourceList.groupVersion.toLowerCase()] = apiClient;
 
+        if (resourceList.groupVersion === 'v1') {
+            console.log(`Resource List:\n\n${stringify(resourceList)}`);
+        }
+
         for (const resource of resourceList.resources) {
 
-            const resourceKind = resource.kind.toLowerCase();
+            const resourceKind = k8sKind(resource.kind).toLowerCase();
             if (!this._kindToApiClients[resourceKind]) {
                 this._kindToApiClients[resourceKind] = [];
             }
@@ -68,7 +72,7 @@ class K8sApi {
             /**
              * Initialize group version to preferred api version.
              */
-            this._groupVersionToPreferredVersion[entry.groupVersion] = apiGroup.preferredVersion.groupVersion;
+            this._groupVersionToPreferredVersion[entry.groupVersion.toLowerCase()] = apiGroup.preferredVersion.groupVersion;
         }
     }
 
@@ -121,11 +125,10 @@ class K8sApi {
             try {
                 const {response: {body}} = await fetchResources.bind(apiClient)();
 
-                callback(apiClient, body);
+                callback(apiClient, k8sManifest(body));
             } catch (e) {
 
-                const {response: {statusCode}} = e;
-                if (!statusCode || statusCode !== 404) {
+                if (!e?.response?.statusCode || e?.response?.statusCode !== 404) {
                     console.error(`An error occurred:\n\n${JSON.stringify(e)}\n${e.stack}`)
                     throw e;
                 }
@@ -133,15 +136,22 @@ class K8sApi {
         }
     }
 
+    _groupVersion(kind) {
+        return this._kindToGroupVersion[k8sKind(kind).toLowerCase()] || null;
+    }
+
     _clientApis(kind) {
-        return this._kindToApiClients[kind.toLowerCase()] || [];
+        return this._kindToApiClients[k8sKind(kind).toLowerCase()] || [];
     }
 
     _clientApi(apiVersion) {
         return this._apiVersionToApiClient[apiVersion.toLowerCase()] || null;
     }
 
-    // TODO Test
+    _preferredVersion(groupVersion) {
+        return this._groupVersionToPreferredVersion[groupVersion.toLowerCase()] || null;
+    }
+
     /**
      * Get the preferred api version.
      *
@@ -150,13 +160,13 @@ class K8sApi {
      */
     preferredVersion(kind) {
 
-        const kindGroup = this._kindToGroupVersion[kind.toLowerCase()];
+        const kindGroup = this._groupVersion(kind);
 
         if (!kindGroup) {
             throw new Error(`The kind ${kind} didn't have a registered group version.`);
         }
 
-        const targetVersion = this._groupVersionToPreferredVersion[kindGroup];
+        const targetVersion = this._preferredVersion(kindGroup);
 
         if (!targetVersion) {
             throw new Error(`The kind ${kind} with group version ${kindGroup} didn't have a registered preferred version.`);
@@ -180,8 +190,7 @@ class K8sApi {
                 return this._configuredManifest(received.response.body);
             } catch (e) {
 
-                const {response: {statusCode}} = e;
-                if (statusCode !== 409) {
+                if (!e?.response?.statusCode || e?.response?.statusCode !== 409) {
                     console.error(`An error occurred:\n\n${JSON.stringify(e)}\n${e.stack}`)
                     throw e;
                 }
@@ -274,7 +283,7 @@ class K8sApi {
      * @param {String} kind K8s kind.
      * @param {String} name Name of the object as seen in the metadata.name field.
      * @param {String} [namespace = DEFAULT_NAMESPACE] Namespace of the object as seen in the metadata.namespace field.
-     * @returns Function to use to read the specified kind.
+     * @returns Function to use to read the specified cluster object.
      */
     _readClusterObjectStrategy(api, kind, name, namespace = DEFAULT_NAMESPACE) {
 
@@ -385,14 +394,16 @@ class K8sApi {
                 throw new Error(`The API response didn't include a valid body. Received: ${body}`);
             }
 
-            for (let i = 0; i < body.items.length; i++) {
-                body.items[i].apiVersion = body.apiVersion;
-
-                const itemTypeName = body.items[i].constructor.name || '';
-                console.log(`List all body found:\n\n${stringify(body.items[i])}`);
+            const kindList = k8sManifest(body);
+            for (let i = 0; i < kindList.items.length; i++) {
+                kindList.items[i].apiVersion = kindList.apiVersion;
+                kindList.items[i].kind = k8sKind(kindList.items[i]?.constructor?.name || '');
+                if (i === 0) {
+                    console.log(`List all body found:\n\n${stringify(kindList.items[i])}`);
+                }
             }
 
-            return body;
+            return kindList;
         }));
     }
 
@@ -480,9 +491,7 @@ class K8sApi {
                 return await strategy();
             } catch (e) {
 
-                const {response: {statusCode}} = e;
-
-                if (statusCode !== 404) {
+                if (!e?.response?.statusCode || e?.response?.statusCode !== 404) {
                     console.error(`An error occurred:\n\n${JSON.stringify(e)}\n${e.stack}`)
                     throw e;
                 }
@@ -498,7 +507,7 @@ class K8sApi {
             configuration.kind = k8sKind(configuration.constructor.name);
         }
 
-        return configuration;
+        return k8sManifest(configuration);
     }
 };
 

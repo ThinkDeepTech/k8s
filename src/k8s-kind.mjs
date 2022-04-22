@@ -16,12 +16,12 @@ const k8sKind = (prospectiveKind) => {
         initKindMap();
     }
 
-    const versionlessKind = removeVersion(prospectiveKind)
+    const versionlessKind = removeVersion(prospectiveKind);
 
-    const targetKind = kindStringToManifestKindMap[versionlessKind.toLowerCase()] || '';
+    const targetKind = kindStringToManifestKindMap[versionlessKind.toLowerCase()] || versionlessKind || '';
 
     if (!targetKind) {
-        throw new Error(`The kind ${prospectiveKind} wasn't found in the k8s client library. Are you sure you supplied an accepted kind?`);
+        throw new Error(`The kind ${prospectiveKind} wasn't found in the k8s client library. The kind found was ${targetKind}. Are you sure you supplied an accepted kind?`);
     }
 
     return targetKind;

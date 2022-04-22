@@ -221,18 +221,20 @@ describe('k8s-api', () => {
 
     })
 
+    describe('preferredVersion', () => {
+        // TODO
+    })
+
     describe('exists', () => {
-
-
+        // TODO
     })
 
     describe('read', () => {
-
+        // TODO
     })
 
     describe('_readStrategy', () => {
-
-
+        // TODO
     })
 
     describe('_readClusterObjectStrategy', () => {
@@ -243,13 +245,13 @@ describe('k8s-api', () => {
          * exist on the class passed in.
          */
 
-        it('should return a non-namespaced function if one exists', () => {
-            const api = null;
-            const kind = '';
-            const name = 'metadata.name';
-            const namespace = 'metadata.namespace';
-            const strategy = subject._readClusterObjectStrategy.bind(api, kind, name, namespace)
-        })
+        // it('should return a non-namespaced function if one exists', () => {
+        //     const api = null;
+        //     const kind = '';
+        //     const name = 'metadata.name';
+        //     const namespace = 'metadata.namespace';
+        //     const strategy = subject._readClusterObjectStrategy(api, kind, name, namespace);
+        // })
 
         it('should return a namespaced function if one exists', () => {
 
@@ -264,7 +266,7 @@ describe('k8s-api', () => {
 
             const requestResult = {
                 response: {
-                    body: {},
+                    body: apiGroups[0],
                     statusCode: 200
                 },
             };
@@ -291,7 +293,7 @@ describe('k8s-api', () => {
 
             const requestResult = {
                 response: {
-                    body: {},
+                    body: resourceLists[0],
                     statusCode: 200
                 },
             };
@@ -319,7 +321,7 @@ describe('k8s-api', () => {
 
             const requestResult = {
                 response: {
-                    body: {},
+                    body: apiGroups[0],
                     statusCode: 200
                 },
             };
@@ -350,7 +352,7 @@ describe('k8s-api', () => {
 
             const requestResult = {
                 response: {
-                    body: {},
+                    body: apiGroups[0],
                     statusCode: 200
                 },
             };
@@ -370,7 +372,7 @@ describe('k8s-api', () => {
 
             const requestResult = {
                 response: {
-                    body: {},
+                    body: apiGroups[0],
                     statusCode: 200
                 },
             };
@@ -390,7 +392,7 @@ describe('k8s-api', () => {
 
             const requestResult = {
                 response: {
-                    body: {},
+                    body: apiGroups[0],
                     statusCode: 400
                 },
             };
@@ -405,7 +407,7 @@ describe('k8s-api', () => {
         it('should ignore error 404 not found', async () => {
             const requestResult = {
                 response: {
-                    body: {},
+                    body: apiGroups[0],
                     statusCode: 404
                 },
             };
@@ -420,7 +422,7 @@ describe('k8s-api', () => {
         it('should throw propogate the error if status code is not defined', async () => {
             const requestResult = {
                 response: {
-                    body: {},
+                    body: apiGroups[0],
                 },
             };
 
