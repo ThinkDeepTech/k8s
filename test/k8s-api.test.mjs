@@ -235,10 +235,20 @@ describe('k8s-api', () => {
 
     })
 
-    describe('_readKindThroughApiStrategy', () => {
+    describe('_readClusterObjectStrategy', () => {
+
+        /**
+         * NOTE: The kinds used here have to be kinds accepted by the mock APIs because they're created
+         * using sinon.createStubInstance. Therefore, the stubs are literally created from functions that
+         * exist on the class passed in.
+         */
 
         it('should return a non-namespaced function if one exists', () => {
-
+            const api = null;
+            const kind = '';
+            const name = 'metadata.name';
+            const namespace = 'metadata.namespace';
+            const strategy = subject._readClusterObjectStrategy.bind(api, kind, name, namespace)
         })
 
         it('should return a namespaced function if one exists', () => {

@@ -1,6 +1,9 @@
 import k8s from '@kubernetes/client-node';
+import { stringify } from '@thinkdeep/k8s-manifest';
 import {ErrorNotFound} from './error/error-not-found.mjs'
 import { k8sKind } from './k8s-kind.mjs';
+
+const DEFAULT_NAMESPACE = 'default';
 
 class K8sApi {
 
@@ -121,10 +124,9 @@ class K8sApi {
                 callback(apiClient, body);
             } catch (e) {
 
-                console.log(`An error occurred:\n\n${JSON.stringify(e)}\n${e.stack}`)
-
                 const {response: {statusCode}} = e;
                 if (!statusCode || statusCode !== 404) {
+                    console.error(`An error occurred:\n\n${JSON.stringify(e)}\n${e.stack}`)
                     throw e;
                 }
             }
@@ -178,10 +180,9 @@ class K8sApi {
                 return this._configuredManifest(received.response.body);
             } catch (e) {
 
-                console.log(`An error occurred:\n\n${JSON.stringify(e)}\n${e.stack}`)
-
                 const {response: {statusCode}} = e;
                 if (statusCode !== 409) {
+                    console.error(`An error occurred:\n\n${JSON.stringify(e)}\n${e.stack}`)
                     throw e;
                 }
 
@@ -260,7 +261,7 @@ class K8sApi {
 
         let strategies = [];
         for (const api of apis) {
-            strategies.push(this._readKindThroughApiStrategy(api, _kind, name, namespace));
+            strategies.push(this._readClusterObjectStrategy(api, _kind, name, namespace));
         }
 
         return this._handleStrategyExecution.bind(this, strategies);
@@ -272,16 +273,16 @@ class K8sApi {
      * @param {any} api K8s javascript client API with the needed function.
      * @param {String} kind K8s kind.
      * @param {String} name Name of the object as seen in the metadata.name field.
-     * @param {String} namespace Namespace of the object as seen in the metadata.namespace field.
+     * @param {String} [namespace = DEFAULT_NAMESPACE] Namespace of the object as seen in the metadata.namespace field.
      * @returns Function to use to read the specified kind.
      */
-    _readKindThroughApiStrategy(api, kind, name, namespace) {
+    _readClusterObjectStrategy(api, kind, name, namespace = DEFAULT_NAMESPACE) {
 
         const _kind = k8sKind(kind);
         if (api[`read${_kind}`]) {
 
             return api[`read${_kind}`].bind(api, name);
-        } else if (!!namespace && api[`readNamespaced${_kind}`]) {
+        } else if (api[`readNamespaced${_kind}`]) {
 
             return api[`readNamespaced${_kind}`].bind(api, name, namespace);
         } else {
@@ -388,7 +389,7 @@ class K8sApi {
                 body.items[i].apiVersion = body.apiVersion;
 
                 const itemTypeName = body.items[i].constructor.name || '';
-                body.items[i].kind = k8sKind(itemTypeName.toLowerCase());
+                console.log(`List all body found:\n\n${stringify(body.items[i])}`);
             }
 
             return body;
@@ -479,11 +480,10 @@ class K8sApi {
                 return await strategy();
             } catch (e) {
 
-                console.log(`An error occurred:\n\n${JSON.stringify(e)}\n${e.stack}`)
-
                 const {response: {statusCode}} = e;
 
                 if (statusCode !== 404) {
+                    console.error(`An error occurred:\n\n${JSON.stringify(e)}\n${e.stack}`)
                     throw e;
                 }
 
