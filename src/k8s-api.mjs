@@ -1,5 +1,4 @@
 import k8s from '@kubernetes/client-node';
-import { k8sManifest } from '@thinkdeep/k8s-manifest';
 import {ErrorNotFound} from './error/error-not-found.mjs'
 import { k8sKind } from './k8s-kind.mjs';
 
@@ -115,8 +114,10 @@ class K8sApi {
             try {
                 const {response: {body}} = await fetchResources.bind(apiClient)();
 
-                callback(apiClient, k8sManifest(body));
+                callback(apiClient, body);
             } catch (e) {
+
+                console.log(`An error occurred:\n\n${JSON.stringify(e)}\n${e.stack}`)
 
                 const {response: {statusCode}} = e;
                 if (statusCode !== 404) {
@@ -172,6 +173,8 @@ class K8sApi {
 
                 return this._configuredManifest(received.response.body);
             } catch (e) {
+
+                console.log(`An error occurred:\n\n${JSON.stringify(e)}\n${e.stack}`)
 
                 const {response: {statusCode}} = e;
                 if (statusCode !== 409) {
@@ -471,6 +474,9 @@ class K8sApi {
             try {
                 return await strategy();
             } catch (e) {
+
+                console.log(`An error occurred:\n\n${JSON.stringify(e)}\n${e.stack}`)
+
                 const {response: {statusCode}} = e;
 
                 if (statusCode !== 404) {

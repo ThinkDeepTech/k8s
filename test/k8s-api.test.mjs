@@ -265,7 +265,7 @@ describe('k8s-api', () => {
 
     describe('_forEachApi', () => {
 
-        const resourceFunctionName = 'getAPIGroup';
+        const resourceFunctionName = apiGroupResourceFunction;
 
         it('should throw an error if an invalid kube config is supplied', async () => {
             await expect(subject._forEachApi({}, resourceFunctionName, (_, __) => { }, apis)).to.be.rejected;

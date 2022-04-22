@@ -1,6 +1,6 @@
 {
   "name": "@thinkdeep/k8s",
-  "version": "4.0.1-next.1",
+  "version": "4.0.1-next.2",
   "description": "K8s node client for processing template string yaml configurations instead of value assignment to k8s javascript client object properties (i.e, V1CronJob).",
   "main": "src/index.mjs",
   "repository": "git@github.com:ThinkDeepTech/k8s.git",
