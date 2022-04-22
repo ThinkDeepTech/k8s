@@ -91,23 +91,23 @@ describe('k8s-api', () => {
         kubeConfig.makeApiClient.withArgs(k8s.EventsApi).returns(apiClients[1]);
         kubeConfig.makeApiClient.withArgs(k8s.EventsV1Api).returns(apiClients[2]);
 
-        apiClients[0][apiGroupResourceFunction].returns({
+        apiClients[0][apiGroupResourceFunction].returns(Promise.resolve({
             response: {
                 body: apiGroups[0]
             }
-        });
+        }));
 
-        apiClients[1][apiGroupResourceFunction].returns({
+        apiClients[1][apiGroupResourceFunction].returns(Promise.resolve({
             response: {
                 body: apiGroups[1]
             }
-        });
+        }));
 
-        apiClients[2][apiResourcesFunction].returns({
+        apiClients[2][apiResourcesFunction].returns(Promise.resolve({
             response: {
                 body: resourceLists[0]
             }
-        });
+        }));
 
         subject = new K8sApi();
     })
@@ -184,6 +184,20 @@ describe('k8s-api', () => {
                 }
             }
         })
+
+    })
+
+    describe('exists', () => {
+
+
+    })
+
+    describe('read', () => {
+
+    })
+
+    describe('_readStrategy', () => {
+
 
     })
 
@@ -317,7 +331,7 @@ describe('k8s-api', () => {
             expect(callback).to.have.callCount(2); // The final call is ignored.
         })
 
-        it('should throw if an error occurs', async () => {
+        it('should throw if a non-404 error occurs', async () => {
 
             const requestResult = {
                 response: {
@@ -331,6 +345,21 @@ describe('k8s-api', () => {
             apiClients[1][resourceFunctionName].returns(Promise.reject(requestResult));
 
             await expect(subject._forEachApi(kubeConfig, resourceFunctionName, (_, __) => { }, apis)).to.be.rejected;
+        })
+
+        it('should ignore error 404 not found', async () => {
+            const requestResult = {
+                response: {
+                    body: {},
+                    statusCode: 404
+                },
+            };
+
+            apiClients[0][resourceFunctionName].returns(Promise.reject(requestResult));
+
+            apiClients[1][resourceFunctionName].returns(Promise.reject(requestResult));
+
+            await expect(subject._forEachApi(kubeConfig, resourceFunctionName, (_, __) => { }, apis)).not.to.be.rejected;
         })
     })
 })

@@ -111,9 +111,17 @@ class K8sApi {
                 throw new Error(`The resource function provided was not a function: ${resourceFunctionName}`);
             }
 
-            const {response: {body}} = await fetchResources.bind(apiClient)();
+            try {
+                const {response: {body}} = await fetchResources.bind(apiClient)();
 
-            callback(apiClient, body);
+                callback(apiClient, body);
+            } catch (e) {
+
+                const {response: {statusCode}} = e;
+                if (statusCode !== 404) {
+                    throw e;
+                }
+            }
         }
     }
 
@@ -125,6 +133,7 @@ class K8sApi {
         return this._apiVersionToApiClient[apiVersion.toLowerCase()] || null;
     }
 
+    // TODO Test
     /**
      * Get the preferred api version.
      *
@@ -146,29 +155,6 @@ class K8sApi {
         }
 
         return targetVersion;
-    }
-
-    /**
-     * Determine if the specified object exists on the cluster.
-     *
-     * @param {String} kind K8s kind.
-     * @param {String} name K8s object metadata name.
-     * @param {String} namespace K8s namespace.
-     *
-     * @returns True if the object exists on the cluster. False otherwise.
-     */
-    async exists(kind, name, namespace) {
-
-        const _kind = k8sKind(kind);
-        try {
-            await this.read(_kind, name, namespace);
-            return true;
-        } catch (e) {
-            if (e.constructor.name !== 'ErrorNotFound') {
-                throw e;
-            }
-            return false;
-        }
     }
 
     /**
@@ -214,6 +200,28 @@ class K8sApi {
     }
 
     /**
+     * Determine if the specified object exists on the cluster.
+     *
+     * @param {String} kind K8s kind.
+     * @param {String} name K8s object metadata name.
+     * @param {String} namespace K8s namespace.
+     *
+     * @returns True if the object exists on the cluster. False otherwise.
+     */
+    async exists(kind, name, namespace) {
+
+        try {
+            await this.read( k8sKind(kind), name, namespace );
+            return true;
+        } catch (e) {
+            if (e.constructor.name !== 'ErrorNotFound') {
+                throw e;
+            }
+            return false;
+        }
+    }
+
+    /**
      * Read an object from the cluster.
      *
      * NOTE: If the object doesn't exist on the cluster a ErrorNotFound exception will be thrown.
@@ -226,8 +234,7 @@ class K8sApi {
      */
     async read(kind, name, namespace) {
 
-        const _kind = k8sKind(kind);
-        const results = await this._readStrategy(_kind, name, namespace)();
+        const results = await this._readStrategy( k8sKind(kind), name, namespace )();
 
         if (results.length === 0) {
             const namespaceMessage = !!namespace ? ` in namespace ${namespace}` : ``;
