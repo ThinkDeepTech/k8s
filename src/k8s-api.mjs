@@ -1,5 +1,4 @@
 import k8s from '@kubernetes/client-node';
-import { stringify } from '@thinkdeep/k8s-manifest';
 import {ErrorNotFound} from './error/error-not-found.mjs'
 import { k8sKind } from './k8s-kind.mjs';
 
@@ -15,11 +14,12 @@ class K8sApi {
     /**
      * Initialize the api maps.
      *
-     * @param {Object} kubeConfig - K8s javascript client KubeConfig object.
+     * @param {Object} kubeConfig K8s javascript client KubeConfig object.
+     * @param {Array<any>} [apis = k8s.APIS] The k8s API objects to use. This is intended for testing.
      */
-    async init(kubeConfig) {
+    async init(kubeConfig, apis = k8s.APIS) {
         if (!this.initialized()) {
-            await this._initClientMappings(kubeConfig);
+            await this._initClientMappings(kubeConfig, apis);
             console.log(`Initialized the k8s api.`);
         }
     };
@@ -37,6 +37,14 @@ class K8sApi {
     async _initClientMappings(kubeConfig, apis = k8s.APIS) {
 
         return Promise.all([
+            this._forEachApiGroup(kubeConfig, (_, apiGroup) => {
+                for (const entry of apiGroup.versions) {
+                    /**
+                     * Initialize group version to preferred api version.
+                     */
+                    this._groupVersionToPreferredVersion[entry.groupVersion] = apiGroup.preferredVersion.groupVersion;
+                }
+            }, apis),
             this._forEachApiResourceList(kubeConfig, (apiClient, resourceList) => {
 
                 /**
@@ -46,7 +54,7 @@ class K8sApi {
 
                 for (const resource of resourceList.resources) {
 
-                    const resourceKind = resource.kind.toLowerCase();
+                    const resourceKind = k8sKind(resource.kind);
                     if (!this._kindToApiClients[resourceKind]) {
                         this._kindToApiClients[resourceKind] = [];
                     }
@@ -61,25 +69,9 @@ class K8sApi {
                      */
                     this._kindToGroupVersion[resourceKind] = resourceList.groupVersion;
                 }
-            }, apis),
-            this._forEachApiGroup(kubeConfig, (_, apiGroup) => {
-                for (const entry of apiGroup.versions) {
-                    /**
-                     * Initialize group version to preferred api version.
-                     */
-                    this._groupVersionToPreferredVersion[entry.groupVersion] = apiGroup.preferredVersion.groupVersion;
-                }
             }, apis)
         ]);
     };
-
-    _clientApis(kind) {
-        return this._kindToApiClients[kind.toLowerCase()] || [];
-    }
-
-    _clientApi(apiVersion) {
-        return this._apiVersionToApiClient[apiVersion.toLowerCase()] || null;
-    }
 
     async _forEachApiGroup(kubeConfig, callback, apis = k8s.APIS) {
         await this._forEachApi(kubeConfig, 'getAPIGroup', callback, apis);
@@ -119,14 +111,29 @@ class K8sApi {
                 throw new Error(`The resource function provided was not a function: ${resourceFunctionName}`);
             }
 
-            const {response: {body}} = await fetchResources.bind(apiClient)();
+            try {
+                const {response: {body}} = await fetchResources.bind(apiClient)();
 
-            console.log(`Resource Fetch:\n\n${stringify(body)}`);
+                callback(apiClient, body);
+            } catch (e) {
 
-            callback(apiClient, body);
+                const {response: {statusCode}} = e;
+                if (statusCode !== 404) {
+                    throw e;
+                }
+            }
         }
     }
 
+    _clientApis(kind) {
+        return this._kindToApiClients[k8sKind(kind)] || [];
+    }
+
+    _clientApi(apiVersion) {
+        return this._apiVersionToApiClient[apiVersion.toLowerCase()] || null;
+    }
+
+    // TODO Test
     /**
      * Get the preferred api version.
      *
@@ -135,7 +142,7 @@ class K8sApi {
      */
     preferredVersion(kind) {
 
-        const kindGroup = this._kindToGroupVersion[kind.toLowerCase()];
+        const kindGroup = this._kindToGroupVersion[k8sKind(kind)];
 
         if (!kindGroup) {
             throw new Error(`The kind ${kind} didn't have a registered group version.`);
@@ -144,31 +151,10 @@ class K8sApi {
         const targetVersion = this._groupVersionToPreferredVersion[kindGroup];
 
         if (!targetVersion) {
-            throw new Error(`The kind ${kind} didn't have a registered preferred version. Received: ${version}`);
+            throw new Error(`The kind ${kind} with group version ${kindGroup} didn't have a registered preferred version.`);
         }
 
         return targetVersion;
-    }
-
-    /**
-     * Determine if the specified object exists on the cluster.
-     *
-     * @param {String} kind K8s kind.
-     * @param {String} name K8s object metadata name.
-     * @param {String} namespace K8s namespace.
-     *
-     * @returns True if the object exists on the cluster. False otherwise.
-     */
-    async exists(kind, name, namespace) {
-        try {
-            await this.read(kind, name, namespace);
-            return true;
-        } catch (e) {
-            if (e.constructor.name !== 'ErrorNotFound') {
-                throw e;
-            }
-            return false;
-        }
     }
 
     /**
@@ -198,7 +184,7 @@ class K8sApi {
 
     _creationStrategy(manifest) {
 
-        const kind = k8sKind(manifest.kind.toLowerCase());
+        const kind = k8sKind(manifest.kind);
         const api = this._clientApi(manifest.apiVersion);
         if (api[`createNamespaced${kind}`]) {
 
@@ -214,6 +200,28 @@ class K8sApi {
     }
 
     /**
+     * Determine if the specified object exists on the cluster.
+     *
+     * @param {String} kind K8s kind.
+     * @param {String} name K8s object metadata name.
+     * @param {String} namespace K8s namespace.
+     *
+     * @returns True if the object exists on the cluster. False otherwise.
+     */
+    async exists(kind, name, namespace) {
+
+        try {
+            await this.read( k8sKind(kind), name, namespace );
+            return true;
+        } catch (e) {
+            if (e.constructor.name !== 'ErrorNotFound') {
+                throw e;
+            }
+            return false;
+        }
+    }
+
+    /**
      * Read an object from the cluster.
      *
      * NOTE: If the object doesn't exist on the cluster a ErrorNotFound exception will be thrown.
@@ -225,7 +233,8 @@ class K8sApi {
      * @returns A kubernetes javascript client representation of the object on the cluster.
      */
     async read(kind, name, namespace) {
-        const results = await this._readStrategy(kind, name, namespace)();
+
+        const results = await this._readStrategy( k8sKind(kind), name, namespace )();
 
         if (results.length === 0) {
             const namespaceMessage = !!namespace ? ` in namespace ${namespace}` : ``;
@@ -235,14 +244,15 @@ class K8sApi {
         return results.map((received) => this._configuredManifest(received.response.body))[0];
     }
 
-    _readStrategy(prospectiveKind, name, namespace) {
-        const kind = k8sKind(prospectiveKind.toLowerCase());
+    _readStrategy(kind, name, namespace) {
 
-        const apis = this._clientApis(kind);
+        const _kind = k8sKind(kind);
+
+        const apis = this._clientApis(_kind);
 
         let strategies = [];
         for (const api of apis) {
-            strategies.push(this._readKindThroughApiStrategy(api, kind, name, namespace));
+            strategies.push(this._readKindThroughApiStrategy(api, _kind, name, namespace));
         }
 
         return this._handleStrategyExecution.bind(this, strategies);
@@ -250,12 +260,13 @@ class K8sApi {
 
     _readKindThroughApiStrategy(api, kind, name, namespace) {
 
-        if (api[`read${kind}`]) {
+        const _kind = k8sKind(kind);
+        if (api[`read${_kind}`]) {
 
-            return api[`read${kind}`].bind(api, name);
-        } else if (!!namespace && api[`readNamespaced${kind}`]) {
+            return api[`read${_kind}`].bind(api, name);
+        } else if (!!namespace && api[`readNamespaced${_kind}`]) {
 
-            return api[`readNamespaced${kind}`].bind(api, name, namespace);
+            return api[`readNamespaced${_kind}`].bind(api, name, namespace);
         } else {
 
             const namespaceText = namespace ? `and namespace ${namespace}` : ``;
@@ -290,7 +301,7 @@ class K8sApi {
 
     _patchStrategy(manifest) {
 
-        const kind = k8sKind(manifest.kind.toLowerCase());
+        const kind = k8sKind(manifest.kind);
 
         const apis = this._clientApis(kind);
 
@@ -318,15 +329,16 @@ class K8sApi {
             }
         };
 
-        if (api[`patchNamespaced${kind}`]) {
+        const _kind = k8sKind(kind);
+        if (api[`patchNamespaced${_kind}`]) {
 
-            return api[`patchNamespaced${kind}`].bind(
+            return api[`patchNamespaced${_kind}`].bind(
                 api, manifest.metadata.name, manifest.metadata.namespace, manifest,
                 pretty, dryRun, fieldManager, force, options
                 );
-        } else if (api[`patch${kind}`]) {
+        } else if (api[`patch${_kind}`]) {
 
-            return api[`patch${kind}`].bind(
+            return api[`patch${_kind}`].bind(
                 api, manifest.metadata.name, manifest,
                 pretty, dryRun, fieldManager, force, options);
         } else {
@@ -366,14 +378,14 @@ class K8sApi {
         }));
     }
 
-    _listStrategy(prospectiveKind, namespace) {
+    _listStrategy(kind, namespace) {
 
-        const kind = k8sKind(prospectiveKind.toLowerCase());
+        const _kind = k8sKind(kind);
         const apis = this._clientApis(kind);
 
         let strategies = [];
         for (const api of apis) {
-            strategies.push(this._listKindThroughApiStrategy(api, kind, namespace));
+            strategies.push(this._listKindThroughApiStrategy(api, _kind, namespace));
         }
 
         const gatherAllKindLists = (stgs) => Promise.all(stgs.map((strategy) =>  strategy()));
@@ -382,12 +394,14 @@ class K8sApi {
     }
 
     _listKindThroughApiStrategy(api, kind, namespace) {
-        if (!namespace && api[`list${kind}ForAllNamespaces`]) {
 
-            return api[`list${kind}ForAllNamespaces`].bind(api);
-        } else if (!!namespace && api[`listNamespaced${kind}`]) {
+        const _kind = k8sKind(kind);
+        if (!namespace && api[`list${_kind}ForAllNamespaces`]) {
 
-            return api[`listNamespaced${kind}`].bind(api, namespace);
+            return api[`list${_kind}ForAllNamespaces`].bind(api);
+        } else if (!!namespace && api[`listNamespaced${_kind}`]) {
+
+            return api[`listNamespaced${_kind}`].bind(api, namespace);
         } else {
 
             const namespaceText = namespace ? `and namespace ${namespace}` : ``;
@@ -422,18 +436,19 @@ class K8sApi {
             throw new Error(`The manifest requires an api version.`);
         }
 
-        const kind = k8sKind(manifest.kind.toLowerCase());
         const api = this._clientApi(manifest.apiVersion);
-        return this._handleStrategyExecution.bind(this, [this._deleteKindThroughApiStrategy(api, kind, manifest)]);
+        return this._handleStrategyExecution.bind(this, [this._deleteKindThroughApiStrategy(api, k8sKind(manifest.kind), manifest)]);
     }
 
     _deleteKindThroughApiStrategy(api, kind, manifest) {
-        if (api[`deleteNamespaced${kind}`]) {
 
-            return api[`deleteNamespaced${kind}`].bind(api, manifest.metadata.name, manifest.metadata.namespace);
-        } else if (api[`delete${kind}`]) {
+        const _kind = k8sKind(kind);
+        if (api[`deleteNamespaced${_kind}`]) {
 
-            return api[`delete${kind}`].bind(api, manifest.metadata.name);
+            return api[`deleteNamespaced${_kind}`].bind(api, manifest.metadata.name, manifest.metadata.namespace);
+        } else if (api[`delete${_kind}`]) {
+
+            return api[`delete${_kind}`].bind(api, manifest.metadata.name);
         } else {
             throw new Error(`
                 The deletion function for kind ${kind} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.

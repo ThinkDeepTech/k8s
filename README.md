@@ -1,5 +1,6 @@
 # k8s
-K8s node client for processing template string yaml configurations instead of value assignment to k8s javascript client object properties (i.e, V1CronJob).
+K8s node client for processing template string yaml configurations instead of value assignment to k8s javascript client object properties (i.e, V1CronJob). If you're just interested in creating k8s javascript client objects using template strings, see
+[@thinkdeep/k8s-manifest](https://www.npmjs.com/package/@thinkdeep/k8s-manifest).
 
 # Dependencies
 - [Kubernetes javascript client](https://github.com/kubernetes-client/javascript) v0.15
