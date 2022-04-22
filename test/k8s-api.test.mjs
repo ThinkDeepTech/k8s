@@ -201,6 +201,17 @@ describe('k8s-api', () => {
 
     })
 
+    describe('_readKindThroughApiStrategy', () => {
+
+        it('should return a non-namespaced function if one exists', () => {
+
+        })
+
+        it('should return a namespaced function if one exists', () => {
+
+        })
+    })
+
     describe('_forEachApiGroup', () => {
 
         const resourceFunctionName = apiGroupResourceFunction;

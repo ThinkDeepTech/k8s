@@ -1,4 +1,5 @@
 import k8s from '@kubernetes/client-node';
+import { k8sManifest } from '@thinkdeep/k8s-manifest';
 import {ErrorNotFound} from './error/error-not-found.mjs'
 import { k8sKind } from './k8s-kind.mjs';
 
@@ -114,7 +115,7 @@ class K8sApi {
             try {
                 const {response: {body}} = await fetchResources.bind(apiClient)();
 
-                callback(apiClient, body);
+                callback(apiClient, k8sManifest(body));
             } catch (e) {
 
                 const {response: {statusCode}} = e;
@@ -258,6 +259,15 @@ class K8sApi {
         return this._handleStrategyExecution.bind(this, strategies);
     }
 
+    /**
+     * Get the read function from the k8s javascript client API.
+     *
+     * @param {any} api K8s javascript client API with the needed function.
+     * @param {String} kind K8s kind.
+     * @param {String} name Name of the object as seen in the metadata.name field.
+     * @param {String} namespace Namespace of the object as seen in the metadata.namespace field.
+     * @returns Function to use to read the specified kind.
+     */
     _readKindThroughApiStrategy(api, kind, name, namespace) {
 
         const _kind = k8sKind(kind);
