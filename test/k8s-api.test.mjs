@@ -1,6 +1,6 @@
 import k8s from '@kubernetes/client-node';
 import { k8sManifest } from '@thinkdeep/k8s-manifest';
-import chai from 'chai';
+import chai, { assert } from 'chai';
 import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
 import chaiAsPromised from 'chai-as-promised';
@@ -148,6 +148,40 @@ describe('k8s-api', () => {
         })
     })
 
+    describe('_applyResourceListValuesToMaps', () => {
+
+        it('should convert the resource list kind to lowercase but avoid checking for the object in k8s javascript client', () => {
+            /**
+             * This is important because not all resource kinds returned in the resources of the resourceList objects are found
+             * in the k8s module object. One such object is kind NodeProxyOptions included in the resource list in the beforeEach.
+             */
+            const resourceList = k8sManifest(`
+                kind: APIResourceList
+                apiVersion: v1
+                groupVersion: events.k8s.io/v1beta1
+                resources:
+                  - name: events2
+                    singularName: ''
+                    namespaced: true
+                    kind: NodeProxyOptions
+                    verbs:
+                      - create
+                      - delete
+                      - deletecollection
+                      - get
+                      - list
+                      - patch
+                      - update
+                      - watch
+                    shortNames:
+                      - ev
+                    storageVersionHash: r2yiGXH7wu8=
+            `);
+
+            expect(subject._applyResourceListValuesToMaps.bind(subject, null, resourceList)).not.to.throw();
+        })
+    })
+
     describe('_initClientMappings', () => {
 
         it('should provide a mapping from api version to api client', async () => {
@@ -161,7 +195,7 @@ describe('k8s-api', () => {
 
             await subject._initClientMappings(kubeConfig, apis);
 
-            const mappedApis = subject._kindToApiClients[k8sKind(resourceLists[0].resources[0].kind)];
+            const mappedApis = subject._kindToApiClients[resourceLists[0].resources[0].kind.toLowerCase()];
             expect(Array.isArray(mappedApis)).to.equal(true);
             expect(mappedApis[0]).to.equal(apiClients[2]);
         })
@@ -170,7 +204,7 @@ describe('k8s-api', () => {
 
             await subject._initClientMappings(kubeConfig, apis);
 
-            const groupVersion = subject._kindToGroupVersion[k8sKind(resourceLists[0].resources[0].kind)];
+            const groupVersion = subject._kindToGroupVersion[resourceLists[0].resources[0].kind.toLowerCase()];
             expect(groupVersion).to.equal(resourceLists[0].groupVersion);
         })
 
@@ -371,6 +405,20 @@ describe('k8s-api', () => {
             apiClients[1][resourceFunctionName].returns(Promise.reject(requestResult));
 
             await expect(subject._forEachApi(kubeConfig, resourceFunctionName, (_, __) => { }, apis)).not.to.be.rejected;
+        })
+
+        it('should throw propogate the error if status code is not defined', async () => {
+            const requestResult = {
+                response: {
+                    body: {},
+                },
+            };
+
+            apiClients[0][resourceFunctionName].returns(Promise.reject(requestResult));
+
+            apiClients[1][resourceFunctionName].returns(Promise.reject(requestResult));
+
+            await expect(subject._forEachApi(kubeConfig, resourceFunctionName, (_, __) => { }, apis)).to.be.rejected;
         })
     })
 })

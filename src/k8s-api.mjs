@@ -34,42 +34,46 @@ class K8sApi {
             && (Object.keys(this._kindToGroupVersion).length > 0) && (Object.keys(this._groupVersionToPreferredVersion).length > 0);
     }
 
+    _applyResourceListValuesToMaps(apiClient, resourceList) {
+        /**
+         * Initialize apiVersion-specific client mappings.
+         */
+        this._apiVersionToApiClient[resourceList.groupVersion.toLowerCase()] = apiClient;
+
+        for (const resource of resourceList.resources) {
+
+            const resourceKind = resource.kind.toLowerCase();
+            if (!this._kindToApiClients[resourceKind]) {
+                this._kindToApiClients[resourceKind] = [];
+            }
+
+            /**
+             * Initialize broadcast capability based on kind.
+             */
+            this._kindToApiClients[resourceKind].push(apiClient);
+
+            /**
+             * Enable mapping of kind to group version for preferred version determination.
+             */
+            this._kindToGroupVersion[resourceKind] = resourceList.groupVersion;
+        }
+
+    }
+
+    _applyPreferredVersionToGroupMap(_, apiGroup) {
+        for (const entry of apiGroup.versions) {
+            /**
+             * Initialize group version to preferred api version.
+             */
+            this._groupVersionToPreferredVersion[entry.groupVersion] = apiGroup.preferredVersion.groupVersion;
+        }
+    }
+
     async _initClientMappings(kubeConfig, apis = k8s.APIS) {
 
         return Promise.all([
-            this._forEachApiGroup(kubeConfig, (_, apiGroup) => {
-                for (const entry of apiGroup.versions) {
-                    /**
-                     * Initialize group version to preferred api version.
-                     */
-                    this._groupVersionToPreferredVersion[entry.groupVersion] = apiGroup.preferredVersion.groupVersion;
-                }
-            }, apis),
-            this._forEachApiResourceList(kubeConfig, (apiClient, resourceList) => {
-
-                /**
-                 * Initialize apiVersion-specific client mappings.
-                 */
-                this._apiVersionToApiClient[resourceList.groupVersion.toLowerCase()] = apiClient;
-
-                for (const resource of resourceList.resources) {
-
-                    const resourceKind = k8sKind(resource.kind);
-                    if (!this._kindToApiClients[resourceKind]) {
-                        this._kindToApiClients[resourceKind] = [];
-                    }
-
-                    /**
-                     * Initialize broadcast capability based on kind.
-                     */
-                    this._kindToApiClients[resourceKind].push(apiClient);
-
-                    /**
-                     * Enable mapping of kind to group version for preferred version determination.
-                     */
-                    this._kindToGroupVersion[resourceKind] = resourceList.groupVersion;
-                }
-            }, apis)
+            this._forEachApiGroup(kubeConfig, this._applyPreferredVersionToGroupMap.bind(this), apis),
+            this._forEachApiResourceList(kubeConfig, this._applyResourceListValuesToMaps.bind(this), apis)
         ]);
     };
 
@@ -120,7 +124,7 @@ class K8sApi {
                 console.log(`An error occurred:\n\n${JSON.stringify(e)}\n${e.stack}`)
 
                 const {response: {statusCode}} = e;
-                if (statusCode !== 404) {
+                if (!statusCode || statusCode !== 404) {
                     throw e;
                 }
             }
@@ -128,7 +132,7 @@ class K8sApi {
     }
 
     _clientApis(kind) {
-        return this._kindToApiClients[k8sKind(kind)] || [];
+        return this._kindToApiClients[kind.toLowerCase()] || [];
     }
 
     _clientApi(apiVersion) {
@@ -144,7 +148,7 @@ class K8sApi {
      */
     preferredVersion(kind) {
 
-        const kindGroup = this._kindToGroupVersion[k8sKind(kind)];
+        const kindGroup = this._kindToGroupVersion[kind.toLowerCase()];
 
         if (!kindGroup) {
             throw new Error(`The kind ${kind} didn't have a registered group version.`);
