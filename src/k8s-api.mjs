@@ -37,15 +37,26 @@ class K8sApi {
             && (Object.keys(this._kindToGroupVersion).length > 0) && (Object.keys(this._groupVersionToPreferredVersion).length > 0);
     }
 
+
+    _applyPreferredVersionToGroupMap(_, apiGroup) {
+
+        if (apiGroup.name === 'v1') {
+            console.warn(`Found V1 API Group:\n\n${stringify(apiGroup)}`);
+        }
+
+        for (const entry of apiGroup.versions) {
+            /**
+             * Initialize group version to preferred api version.
+             */
+            this._groupVersionToPreferredVersion[entry.groupVersion.toLowerCase()] = apiGroup.preferredVersion.groupVersion;
+        }
+    }
+
     _applyResourceListValuesToMaps(apiClient, resourceList) {
         /**
          * Initialize apiVersion-specific client mappings.
          */
         this._apiVersionToApiClient[resourceList.groupVersion.toLowerCase()] = apiClient;
-
-        if (resourceList.groupVersion === 'v1') {
-            console.log(`Resource List:\n\n${stringify(resourceList)}`);
-        }
 
         for (const resource of resourceList.resources) {
 
@@ -59,21 +70,17 @@ class K8sApi {
              */
             this._kindToApiClients[resourceKind].push(apiClient);
 
+
+            if (!this._kindToGroupVersion[resourceKind]) {
+                this._kindToGroupVersion[resourceKind] = [];
+            }
+
             /**
              * Enable mapping of kind to group version for preferred version determination.
              */
-            this._kindToGroupVersion[resourceKind] = resourceList.groupVersion;
+            this._kindToGroupVersion[resourceKind].push(resourceList.groupVersion);
         }
 
-    }
-
-    _applyPreferredVersionToGroupMap(_, apiGroup) {
-        for (const entry of apiGroup.versions) {
-            /**
-             * Initialize group version to preferred api version.
-             */
-            this._groupVersionToPreferredVersion[entry.groupVersion.toLowerCase()] = apiGroup.preferredVersion.groupVersion;
-        }
     }
 
     async _initClientMappings(kubeConfig, apis = k8s.APIS) {
@@ -129,15 +136,14 @@ class K8sApi {
             } catch (e) {
 
                 if (!e?.response?.statusCode || e?.response?.statusCode !== 404) {
-                    console.error(`An error occurred:\n\n${JSON.stringify(e)}\n${e.stack}`)
                     throw e;
                 }
             }
         }
     }
 
-    _groupVersion(kind) {
-        return this._kindToGroupVersion[k8sKind(kind).toLowerCase()] || null;
+    _groupVersions(kind) {
+        return this._kindToGroupVersion[k8sKind(kind).toLowerCase()] || [];
     }
 
     _clientApis(kind) {
@@ -148,8 +154,16 @@ class K8sApi {
         return this._apiVersionToApiClient[apiVersion.toLowerCase()] || null;
     }
 
-    _preferredVersion(groupVersion) {
-        return this._groupVersionToPreferredVersion[groupVersion.toLowerCase()] || null;
+    _preferredVersions(groupVersions) {
+
+        /**
+         * A given kind can be part of multiple groups. Therefore, there are multiple preferred versions.
+         */
+        let preferredVersions = [];
+        for (const groupVersion of groupVersions) {
+            preferredVersions.push(this._groupVersionToPreferredVersion[groupVersion.toLowerCase()] || null);
+        }
+        return preferredVersions.filter((val) => !!val);
     }
 
     /**
@@ -160,19 +174,19 @@ class K8sApi {
      */
     preferredVersion(kind) {
 
-        const kindGroup = this._groupVersion(kind);
+        const kindGroups = this._groupVersions(kind);
 
-        if (!kindGroup) {
-            throw new Error(`The kind ${kind} didn't have a registered group version.`);
+        if (!(kindGroups.length > 0)) {
+            throw new Error(`The kind ${kind} didn't have any registered group versions.`);
         }
 
-        const targetVersion = this._preferredVersion(kindGroup);
+        const targetVersions = this._preferredVersions(kindGroups);
 
-        if (!targetVersion) {
-            throw new Error(`The kind ${kind} with group version ${kindGroup} didn't have a registered preferred version.`);
+        if (!(targetVersions.length > 0)) {
+            throw new Error(`The kind ${kind} didn't have a registered preferred version.`);
         }
 
-        return targetVersion;
+        return targetVersions[0];
     }
 
     /**
@@ -191,7 +205,6 @@ class K8sApi {
             } catch (e) {
 
                 if (!e?.response?.statusCode || e?.response?.statusCode !== 409) {
-                    console.error(`An error occurred:\n\n${JSON.stringify(e)}\n${e.stack}`)
                     throw e;
                 }
 
@@ -398,9 +411,6 @@ class K8sApi {
             for (let i = 0; i < kindList.items.length; i++) {
                 kindList.items[i].apiVersion = kindList.apiVersion;
                 kindList.items[i].kind = k8sKind(kindList.items[i]?.constructor?.name || '');
-                if (i === 0) {
-                    console.log(`List all body found:\n\n${stringify(kindList.items[i])}`);
-                }
             }
 
             return kindList;
@@ -492,7 +502,6 @@ class K8sApi {
             } catch (e) {
 
                 if (!e?.response?.statusCode || e?.response?.statusCode !== 404) {
-                    console.error(`An error occurred:\n\n${JSON.stringify(e)}\n${e.stack}`)
                     throw e;
                 }
 
