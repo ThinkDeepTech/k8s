@@ -16,6 +16,42 @@ describe('k8s-api', () => {
     const apiGroupResourceFunction = 'getAPIGroup';
     const apiResourcesFunction = 'getAPIResources';
 
+    const initApiGroups = () => {
+        return {
+            [`${k8s.AdmissionregistrationApi.name}`]: k8sManifest(`
+                kind: APIGroup
+                apiVersion: v1
+                name: admissionregistration.k8s.io
+                versions:
+                  - groupVersion: admissionregistration.k8s.io/v1
+                    version: v1
+                  - groupVersion: admissionregistration.k8s.io/v1beta1
+                    version: v1beta1
+                preferredVersion:
+                  groupVersion: admissionregistration.k8s.io/v1
+                  version: v1
+            `),
+            [`${k8s.EventsApi.name}`]: k8sManifest(`
+                kind: APIGroup
+                apiVersion: v1
+                name: events.k8s.io
+                versions:
+                  - groupVersion: events.k8s.io/v1
+                    version: v1
+                  - groupVersion: events.k8s.io/v1beta1
+                    version: v1beta1
+                preferredVersion:
+                  groupVersion: events.k8s.io/v1
+                  version: v1
+            `)
+        };
+    }
+
+    const apiGroup = (api) => {
+        const apiGroups = initApiGroups();
+        return apiGroups[api.name];
+    }
+
     const initApiClients = (apis) => {
 
         const apiClients = {};
@@ -33,42 +69,12 @@ describe('k8s-api', () => {
     let apiClients;
     let kubeConfig;
     let resourceLists;
-    let apiGroups;
     let subject;
     beforeEach(() => {
 
         apis = [k8s.AdmissionregistrationApi, k8s.EventsApi, k8s.EventsV1Api, k8s.CoreV1Api];
 
         apiClients = initApiClients(apis);
-
-        apiGroups = [
-            k8sManifest(`
-                kind: APIGroup
-                apiVersion: v1
-                name: admissionregistration.k8s.io
-                versions:
-                  - groupVersion: admissionregistration.k8s.io/v1
-                    version: v1
-                  - groupVersion: admissionregistration.k8s.io/v1beta1
-                    version: v1beta1
-                preferredVersion:
-                  groupVersion: admissionregistration.k8s.io/v1
-                  version: v1
-            `),
-            k8sManifest(`
-                kind: APIGroup
-                apiVersion: v1
-                name: events.k8s.io
-                versions:
-                  - groupVersion: events.k8s.io/v1
-                    version: v1
-                  - groupVersion: events.k8s.io/v1beta1
-                    version: v1beta1
-                preferredVersion:
-                  groupVersion: events.k8s.io/v1
-                  version: v1
-            `)
-        ];
 
         resourceLists = [
             k8sManifest(`
@@ -524,13 +530,13 @@ describe('k8s-api', () => {
 
         apiClient(k8s.AdmissionregistrationApi, apiClients)[apiGroupResourceFunction].returns(Promise.resolve({
             response: {
-                body: apiGroups[0]
+                body: apiGroup(k8s.AdmissionregistrationApi)
             }
         }));
 
         apiClient(k8s.EventsApi, apiClients)[apiGroupResourceFunction].returns(Promise.resolve({
             response: {
-                body: apiGroups[1]
+                body: apiGroup(k8s.EventsApi)
             }
         }));
 
@@ -654,7 +660,7 @@ describe('k8s-api', () => {
 
             await subject._initClientMappings(kubeConfig, apis);
 
-            for (const apiGroup of apiGroups) {
+            for (const [_, apiGroup] of Object.entries(initApiGroups())) {
                 for (const entry of apiGroup.versions) {
                     expect(subject._groupVersionToPreferredVersion[entry.groupVersion]).to.equal(apiGroup.preferredVersion.groupVersion);
                 }
@@ -708,18 +714,7 @@ describe('k8s-api', () => {
 
         it('should execute the correct k8s javascript api client function', async () => {
 
-            const requestResult = {
-                response: {
-                    body: apiGroups[0],
-                    statusCode: 200
-                },
-            };
-
             const callback = sinon.stub();
-
-            apiClient(k8s.AdmissionregistrationApi, apiClients)[resourceFunctionName].returns(Promise.resolve(requestResult));
-
-            apiClient(k8s.EventsApi, apiClients)[resourceFunctionName].returns(Promise.resolve(requestResult));
 
             await subject._forEachApiGroup(kubeConfig, callback, apis);
 
@@ -803,7 +798,6 @@ describe('k8s-api', () => {
 
             const requestResult = {
                 response: {
-                    body: apiGroups[0],
                     statusCode: 400
                 },
             };
@@ -818,7 +812,6 @@ describe('k8s-api', () => {
         it('should ignore error 404 not found', async () => {
             const requestResult = {
                 response: {
-                    body: apiGroups[0],
                     statusCode: 404
                 },
             };
@@ -833,7 +826,7 @@ describe('k8s-api', () => {
         it('should throw propogate the error if status code is not defined', async () => {
             const requestResult = {
                 response: {
-                    body: apiGroups[0],
+                    body: {},
                 },
             };
 
