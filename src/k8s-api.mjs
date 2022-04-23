@@ -40,8 +40,6 @@ class K8sApi {
 
     _applyPreferredVersionToGroupMap(_, apiGroup) {
 
-        console.warn(`Found API Group:\n\n${stringify(apiGroup)}`);
-
         for (const entry of apiGroup.versions) {
             /**
              * Initialize group version to preferred api version.
@@ -174,13 +172,13 @@ class K8sApi {
 
         const kindGroups = this._groupVersions(kind);
 
-        if (!(kindGroups.length > 0)) {
+        if (kindGroups.length <= 0) {
             throw new Error(`The kind ${kind} didn't have any registered group versions.`);
         }
 
         const targetVersions = this._preferredVersions(kindGroups);
 
-        if (!(targetVersions.length > 0)) {
+        if (targetVersions.length <= 0) {
             throw new Error(`The kind ${kind} didn't have a registered preferred version.`);
         }
 

@@ -1,6 +1,6 @@
 import k8s from '@kubernetes/client-node';
 import { k8sManifest } from '@thinkdeep/k8s-manifest';
-import chai, { assert } from 'chai';
+import chai from 'chai';
 import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
 import chaiAsPromised from 'chai-as-promised';
