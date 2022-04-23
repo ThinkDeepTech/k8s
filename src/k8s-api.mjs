@@ -1,5 +1,5 @@
 import k8s from '@kubernetes/client-node';
-import { k8sManifest, stringify } from '@thinkdeep/k8s-manifest';
+import { k8sManifest } from '@thinkdeep/k8s-manifest';
 import {ErrorNotFound} from './error/error-not-found.mjs'
 import { k8sKind } from './k8s-kind.mjs';
 
@@ -163,12 +163,14 @@ class K8sApi {
     }
 
     /**
-     * Get the preferred api version.
+     * Get the preferred api versions for the specified kind.
      *
-     * @param {String} kind Kind for which the preferred version is desired.
-     * @returns Preferred api version for specified kind.
+     * NOTE: One kind can be part of multiple groups. Therefore, multiple preferred versions can exist.
+     *
+     * @param {String} kind K8s Kind.
+     * @returns Preferred api versions.
      */
-    preferredVersion(kind) {
+    preferredVersions(kind) {
 
         const kindGroups = this._groupVersions(kind);
 
@@ -179,10 +181,10 @@ class K8sApi {
         const targetVersions = this._preferredVersions(kindGroups);
 
         if (targetVersions.length <= 0) {
-            throw new Error(`The kind ${kind} didn't have a registered preferred version.`);
+            throw new Error(`The kind ${kind} didn't have registered preferred versions.`);
         }
 
-        return targetVersions[0];
+        return targetVersions;
     }
 
     /**

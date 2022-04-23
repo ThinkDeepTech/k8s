@@ -31,13 +31,15 @@ class K8sClient {
     }
 
     /**
-     * Get the cluster preferred api version.
+     * Get the cluster preferred api versions.
      *
-     * @param {String} kind Kind for which the preferred version is desired.
-     * @returns Preferred api version for specified kind.
+     * NOTE: One kind can be part of multiple groups. Therefore, multiple preferred versions can exist.
+     *
+     * @param {String} kind K8s kind.
+     * @returns Array of preferred api versions.
      */
-    preferredVersion(kind) {
-        return this._api.preferredVersion(kind);
+    preferredVersions(kind) {
+        return this._api.preferredVersions(kind);
     }
 
     /**

@@ -16,6 +16,19 @@ describe('k8s-api', () => {
     const apiGroupResourceFunction = 'getAPIGroup';
     const apiResourcesFunction = 'getAPIResources';
 
+    const initApiClients = (apis) => {
+
+        const apiClients = {};
+        for (const api of apis) {
+            apiClients[api.name] = sinon.createStubInstance(api);
+        }
+        return apiClients;
+    };
+
+    const apiClient = (api, apiClients) => {
+        return apiClients[api.name];
+    };
+
     let apis;
     let apiClients;
     let kubeConfig;
@@ -25,12 +38,8 @@ describe('k8s-api', () => {
     beforeEach(() => {
 
         apis = [k8s.AdmissionregistrationApi, k8s.EventsApi, k8s.EventsV1Api, k8s.CoreV1Api];
-        apiClients = [
-            sinon.createStubInstance(k8s.AdmissionregistrationApi),
-            sinon.createStubInstance(k8s.EventsApi),
-            sinon.createStubInstance(k8s.EventsV1Api),
-            sinon.createStubInstance(k8s.CoreV1Api)
-        ];
+
+        apiClients = initApiClients(apis);
 
         apiGroups = [
             k8sManifest(`
@@ -508,30 +517,30 @@ describe('k8s-api', () => {
 
         kubeConfig = sinon.createStubInstance(k8s.KubeConfig);
 
-        kubeConfig.makeApiClient.withArgs(k8s.AdmissionregistrationApi).returns(apiClients[0]);
-        kubeConfig.makeApiClient.withArgs(k8s.EventsApi).returns(apiClients[1]);
-        kubeConfig.makeApiClient.withArgs(k8s.EventsV1Api).returns(apiClients[2]);
-        kubeConfig.makeApiClient.withArgs(k8s.CoreV1Api).returns(apiClients[3]);
+        kubeConfig.makeApiClient.withArgs(k8s.AdmissionregistrationApi).returns(apiClient(k8s.AdmissionregistrationApi, apiClients));
+        kubeConfig.makeApiClient.withArgs(k8s.EventsApi).returns(apiClient(k8s.EventsApi, apiClients));
+        kubeConfig.makeApiClient.withArgs(k8s.EventsV1Api).returns(apiClient(k8s.EventsV1Api, apiClients));
+        kubeConfig.makeApiClient.withArgs(k8s.CoreV1Api).returns(apiClient(k8s.CoreV1Api, apiClients));
 
-        apiClients[0][apiGroupResourceFunction].returns(Promise.resolve({
+        apiClient(k8s.AdmissionregistrationApi, apiClients)[apiGroupResourceFunction].returns(Promise.resolve({
             response: {
                 body: apiGroups[0]
             }
         }));
 
-        apiClients[1][apiGroupResourceFunction].returns(Promise.resolve({
+        apiClient(k8s.EventsApi, apiClients)[apiGroupResourceFunction].returns(Promise.resolve({
             response: {
                 body: apiGroups[1]
             }
         }));
 
-        apiClients[2][apiResourcesFunction].returns(Promise.resolve({
+        apiClient(k8s.EventsV1Api, apiClients)[apiResourcesFunction].returns(Promise.resolve({
             response: {
                 body: resourceLists[0]
             }
         }));
 
-        apiClients[3][apiResourcesFunction].returns(Promise.resolve({
+        apiClient(k8s.CoreV1Api, apiClients)[apiResourcesFunction].returns(Promise.resolve({
             response: {
                 body: resourceLists[1]
             }
@@ -553,7 +562,7 @@ describe('k8s-api', () => {
              * The makeApiClient function is called once for each call to _forEachApi.
              * Therefore, it should be called twice for each function in _initClientMappings.
              */
-            expect(kubeConfig.makeApiClient).to.have.callCount(2 * apiClients.length);
+            expect(kubeConfig.makeApiClient).to.have.callCount(2 * Object.keys(apiClients).length);
         })
 
         it('should initialize kind maps', async () => {
@@ -616,7 +625,7 @@ describe('k8s-api', () => {
 
             await subject._initClientMappings(kubeConfig, apis);
 
-            expect(subject._apiVersionToApiClient[resourceLists[0].groupVersion]).to.equal(apiClients[2]);
+            expect(subject._apiVersionToApiClient[resourceLists[0].groupVersion]).to.equal(apiClient(k8s.EventsV1Api, apiClients));
         })
 
         it('should provide a mapping from k8s kind to api clients for broadcast', async () => {
@@ -625,7 +634,7 @@ describe('k8s-api', () => {
 
             const mappedApis = subject._kindToApiClients[resourceLists[0].resources[0].kind.toLowerCase()];
             expect(Array.isArray(mappedApis)).to.equal(true);
-            expect(mappedApis[0]).to.equal(apiClients[2]);
+            expect(mappedApis[0]).to.equal(apiClient(k8s.EventsV1Api, apiClients));
         })
 
         it('should provide a mapping from kind to group', async () => {
@@ -655,7 +664,9 @@ describe('k8s-api', () => {
     })
 
     describe('preferredVersions', () => {
-        // TODO
+        it('should map the k8s kind to its preferred api versions', async () => {
+
+        })
     })
 
     describe('exists', () => {
@@ -706,14 +717,14 @@ describe('k8s-api', () => {
 
             const callback = sinon.stub();
 
-            apiClients[0][resourceFunctionName].returns(Promise.resolve(requestResult));
+            apiClient(k8s.AdmissionregistrationApi, apiClients)[resourceFunctionName].returns(Promise.resolve(requestResult));
 
-            apiClients[1][resourceFunctionName].returns(Promise.resolve(requestResult));
+            apiClient(k8s.EventsApi, apiClients)[resourceFunctionName].returns(Promise.resolve(requestResult));
 
             await subject._forEachApiGroup(kubeConfig, callback, apis);
 
-            expect(apiClients[0][resourceFunctionName]).to.have.been.calledOnce;
-            expect(apiClients[1][resourceFunctionName]).to.have.been.calledOnce;
+            expect(apiClient(k8s.AdmissionregistrationApi, apiClients)[resourceFunctionName]).to.have.been.calledOnce;
+            expect(apiClient(k8s.EventsApi, apiClients)[resourceFunctionName]).to.have.been.calledOnce;
             expect(callback).to.have.callCount(2);
         })
     })
@@ -733,11 +744,11 @@ describe('k8s-api', () => {
 
             const callback = sinon.stub();
 
-            apiClients[2][resourceFunctionName].returns(Promise.resolve(requestResult));
+            apiClient(k8s.EventsV1Api, apiClients)[resourceFunctionName].returns(Promise.resolve(requestResult));
 
             await subject._forEachApiResourceList(kubeConfig, callback, apis);
 
-            expect(apiClients[2][resourceFunctionName]).to.have.been.calledOnce;
+            expect(apiClient(k8s.EventsV1Api, apiClients)[resourceFunctionName]).to.have.been.calledOnce;
             expect(callback).to.have.been.called;
         })
     })
@@ -752,17 +763,6 @@ describe('k8s-api', () => {
 
         it('should make an api client for each API', async () => {
 
-            const requestResult = {
-                response: {
-                    body: apiGroups[0],
-                    statusCode: 200
-                },
-            };
-
-            apiClients[0][resourceFunctionName].returns(Promise.resolve(requestResult));
-
-            apiClients[1][resourceFunctionName].returns(Promise.resolve(requestResult));
-
             await subject._forEachApi(kubeConfig, resourceFunctionName, (_, __) => { }, apis);
 
             expect(kubeConfig.makeApiClient).to.have.been.called;
@@ -776,25 +776,14 @@ describe('k8s-api', () => {
 
             const resourceName = 'somethingNotKnownAndFake';
 
-            apiClients[0][resourceName] = 'not a function';
+            apiClient(k8s.AdmissionregistrationApi, apiClients)[resourceName] = 'not a function';
 
             await expect(subject._forEachApi(kubeConfig, resourceName, (_, __) => { }, apis)).to.be.rejectedWith(Error);
         })
 
         it('should execute the callback on successful execution of the resource function', async () => {
 
-            const requestResult = {
-                response: {
-                    body: apiGroups[0],
-                    statusCode: 200
-                },
-            };
-
             const callback = sinon.stub();
-
-            apiClients[0][resourceFunctionName].returns(Promise.resolve(requestResult));
-
-            apiClients[1][resourceFunctionName].returns(Promise.resolve(requestResult));
 
             await subject._forEachApi(kubeConfig, resourceFunctionName, callback, apis);
 
@@ -803,18 +792,7 @@ describe('k8s-api', () => {
 
         it('should ignore cases where the resource function is not found', async () => {
 
-            const requestResult = {
-                response: {
-                    body: apiGroups[0],
-                    statusCode: 200
-                },
-            };
-
             const callback = sinon.stub();
-
-            apiClients[0][resourceFunctionName].returns(Promise.resolve(requestResult));
-
-            apiClients[1][resourceFunctionName].returns(Promise.resolve(requestResult));
 
             await subject._forEachApi(kubeConfig, resourceFunctionName, callback, apis);
 
@@ -830,9 +808,9 @@ describe('k8s-api', () => {
                 },
             };
 
-            apiClients[0][resourceFunctionName].returns(Promise.reject(requestResult));
+            apiClient(k8s.AdmissionregistrationApi, apiClients)[resourceFunctionName].returns(Promise.reject(requestResult));
 
-            apiClients[1][resourceFunctionName].returns(Promise.reject(requestResult));
+            apiClient(k8s.EventsApi, apiClients)[resourceFunctionName].returns(Promise.reject(requestResult));
 
             await expect(subject._forEachApi(kubeConfig, resourceFunctionName, (_, __) => { }, apis)).to.be.rejected;
         })
@@ -845,9 +823,9 @@ describe('k8s-api', () => {
                 },
             };
 
-            apiClients[0][resourceFunctionName].returns(Promise.reject(requestResult));
+            apiClient(k8s.AdmissionregistrationApi, apiClients)[resourceFunctionName].returns(Promise.reject(requestResult));
 
-            apiClients[1][resourceFunctionName].returns(Promise.reject(requestResult));
+            apiClient(k8s.EventsApi, apiClients)[resourceFunctionName].returns(Promise.reject(requestResult));
 
             await expect(subject._forEachApi(kubeConfig, resourceFunctionName, (_, __) => { }, apis)).not.to.be.rejected;
         })
@@ -859,9 +837,9 @@ describe('k8s-api', () => {
                 },
             };
 
-            apiClients[0][resourceFunctionName].returns(Promise.reject(requestResult));
+            apiClient(k8s.AdmissionregistrationApi, apiClients)[resourceFunctionName].returns(Promise.reject(requestResult));
 
-            apiClients[1][resourceFunctionName].returns(Promise.reject(requestResult));
+            apiClient(k8s.EventsApi, apiClients)[resourceFunctionName].returns(Promise.reject(requestResult));
 
             await expect(subject._forEachApi(kubeConfig, resourceFunctionName, (_, __) => { }, apis)).to.be.rejected;
         })
