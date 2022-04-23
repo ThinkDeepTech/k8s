@@ -16,68 +16,9 @@ describe('k8s-api', () => {
     const apiGroupResourceFunction = 'getAPIGroup';
     const apiResourcesFunction = 'getAPIResources';
 
-    const initApiGroups = () => {
+    const resourceLists = () => {
         return {
-            [`${k8s.AdmissionregistrationApi.name}`]: k8sManifest(`
-                kind: APIGroup
-                apiVersion: v1
-                name: admissionregistration.k8s.io
-                versions:
-                  - groupVersion: admissionregistration.k8s.io/v1
-                    version: v1
-                  - groupVersion: admissionregistration.k8s.io/v1beta1
-                    version: v1beta1
-                preferredVersion:
-                  groupVersion: admissionregistration.k8s.io/v1
-                  version: v1
-            `),
-            [`${k8s.EventsApi.name}`]: k8sManifest(`
-                kind: APIGroup
-                apiVersion: v1
-                name: events.k8s.io
-                versions:
-                  - groupVersion: events.k8s.io/v1
-                    version: v1
-                  - groupVersion: events.k8s.io/v1beta1
-                    version: v1beta1
-                preferredVersion:
-                  groupVersion: events.k8s.io/v1
-                  version: v1
-            `)
-        };
-    }
-
-    const apiGroup = (api) => {
-        const apiGroups = initApiGroups();
-        return apiGroups[api.name];
-    }
-
-    const initApiClients = (apis) => {
-
-        const apiClients = {};
-        for (const api of apis) {
-            apiClients[api.name] = sinon.createStubInstance(api);
-        }
-        return apiClients;
-    };
-
-    const apiClient = (api, apiClients) => {
-        return apiClients[api.name];
-    };
-
-    let apis;
-    let apiClients;
-    let kubeConfig;
-    let resourceLists;
-    let subject;
-    beforeEach(() => {
-
-        apis = [k8s.AdmissionregistrationApi, k8s.EventsApi, k8s.EventsV1Api, k8s.CoreV1Api];
-
-        apiClients = initApiClients(apis);
-
-        resourceLists = [
-            k8sManifest(`
+            [`${k8s.EventsV1Api.name}`]: k8sManifest(`
                 kind: APIResourceList
                 apiVersion: v1
                 groupVersion: events.k8s.io/v1beta1
@@ -99,7 +40,7 @@ describe('k8s-api', () => {
                       - ev
                     storageVersionHash: r2yiGXH7wu8=
             `),
-            k8sManifest(`
+            [`${k8s.CoreV1Api.name}`]: k8sManifest(`
                 kind: APIResourceList
                 groupVersion: v1
                 resources:
@@ -519,7 +460,72 @@ describe('k8s-api', () => {
                       - update
                 apiVersion: v1
             `)
-        ];
+        };
+    }
+
+    const resourceList = (api) => {
+        const map = resourceLists();
+        return map[api.name];
+    }
+
+    const apiGroups = () => {
+        return {
+            [`${k8s.AdmissionregistrationApi.name}`]: k8sManifest(`
+                kind: APIGroup
+                apiVersion: v1
+                name: admissionregistration.k8s.io
+                versions:
+                  - groupVersion: admissionregistration.k8s.io/v1
+                    version: v1
+                  - groupVersion: admissionregistration.k8s.io/v1beta1
+                    version: v1beta1
+                preferredVersion:
+                  groupVersion: admissionregistration.k8s.io/v1
+                  version: v1
+            `),
+            [`${k8s.EventsApi.name}`]: k8sManifest(`
+                kind: APIGroup
+                apiVersion: v1
+                name: events.k8s.io
+                versions:
+                  - groupVersion: events.k8s.io/v1
+                    version: v1
+                  - groupVersion: events.k8s.io/v1beta1
+                    version: v1beta1
+                preferredVersion:
+                  groupVersion: events.k8s.io/v1
+                  version: v1
+            `)
+        };
+    }
+
+    const apiGroup = (api) => {
+        const groups = apiGroups();
+        return groups[api.name];
+    }
+
+    const initApiClients = (apis) => {
+
+        const apiClients = {};
+        for (const api of apis) {
+            apiClients[api.name] = sinon.createStubInstance(api);
+        }
+        return apiClients;
+    };
+
+    const apiClient = (api, apiClients) => {
+        return apiClients[api.name];
+    };
+
+    let apis;
+    let apiClients;
+    let kubeConfig;
+    let subject;
+    beforeEach(() => {
+
+        apis = [k8s.AdmissionregistrationApi, k8s.EventsApi, k8s.EventsV1Api, k8s.CoreV1Api];
+
+        apiClients = initApiClients(apis);
 
         kubeConfig = sinon.createStubInstance(k8s.KubeConfig);
 
@@ -542,13 +548,13 @@ describe('k8s-api', () => {
 
         apiClient(k8s.EventsV1Api, apiClients)[apiResourcesFunction].returns(Promise.resolve({
             response: {
-                body: resourceLists[0]
+                body: resourceList(k8s.EventsV1Api)
             }
         }));
 
         apiClient(k8s.CoreV1Api, apiClients)[apiResourcesFunction].returns(Promise.resolve({
             response: {
-                body: resourceLists[1]
+                body: resourceList(k8s.CoreV1Api)
             }
         }));
 
@@ -631,14 +637,14 @@ describe('k8s-api', () => {
 
             await subject._initClientMappings(kubeConfig, apis);
 
-            expect(subject._apiVersionToApiClient[resourceLists[0].groupVersion]).to.equal(apiClient(k8s.EventsV1Api, apiClients));
+            expect(subject._apiVersionToApiClient[resourceList(k8s.EventsV1Api).groupVersion]).to.equal(apiClient(k8s.EventsV1Api, apiClients));
         })
 
         it('should provide a mapping from k8s kind to api clients for broadcast', async () => {
 
             await subject._initClientMappings(kubeConfig, apis);
 
-            const mappedApis = subject._kindToApiClients[resourceLists[0].resources[0].kind.toLowerCase()];
+            const mappedApis = subject._kindToApiClients[resourceList(k8s.EventsV1Api).resources[0].kind.toLowerCase()];
             expect(Array.isArray(mappedApis)).to.equal(true);
             expect(mappedApis[0]).to.equal(apiClient(k8s.EventsV1Api, apiClients));
         })
@@ -647,20 +653,21 @@ describe('k8s-api', () => {
 
             await subject._initClientMappings(kubeConfig, apis);
 
-            for (const resourceList of resourceLists) {
+            const resList = resourceLists();
+            for (const [_, resourceList] of Object.entries(resList)) {
                 for (const resource of resourceList.resources) {
                     const actualGroupVersions = subject._kindToGroupVersion[k8sKind(resource.kind).toLowerCase()];
                     expect(actualGroupVersions).to.include(resourceList.groupVersion);
                 }
             }
-            expect(resourceLists.length).to.be.greaterThan(0);
+            expect(Object.keys(resList).length).to.be.greaterThan(0);
         })
 
         it('should provide a map from group to preferred version', async () => {
 
             await subject._initClientMappings(kubeConfig, apis);
 
-            for (const [_, apiGroup] of Object.entries(initApiGroups())) {
+            for (const [_, apiGroup] of Object.entries(apiGroups())) {
                 for (const entry of apiGroup.versions) {
                     expect(subject._groupVersionToPreferredVersion[entry.groupVersion]).to.equal(apiGroup.preferredVersion.groupVersion);
                 }
@@ -730,20 +737,12 @@ describe('k8s-api', () => {
 
         it('should execute the correct k8s javascript api client function', async () => {
 
-            const requestResult = {
-                response: {
-                    body: resourceLists[0],
-                    statusCode: 200
-                },
-            };
-
             const callback = sinon.stub();
-
-            apiClient(k8s.EventsV1Api, apiClients)[resourceFunctionName].returns(Promise.resolve(requestResult));
 
             await subject._forEachApiResourceList(kubeConfig, callback, apis);
 
             expect(apiClient(k8s.EventsV1Api, apiClients)[resourceFunctionName]).to.have.been.calledOnce;
+            expect(apiClient(k8s.CoreV1Api, apiClients)[resourceFunctionName]).to.have.been.calledOnce;
             expect(callback).to.have.been.called;
         })
     })
