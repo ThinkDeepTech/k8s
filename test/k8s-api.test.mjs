@@ -24,11 +24,12 @@ describe('k8s-api', () => {
     let subject;
     beforeEach(() => {
 
-        apis = [k8s.AdmissionregistrationApi, k8s.EventsApi, k8s.EventsV1Api];
+        apis = [k8s.AdmissionregistrationApi, k8s.EventsApi, k8s.EventsV1Api, k8s.CoreV1Api];
         apiClients = [
             sinon.createStubInstance(k8s.AdmissionregistrationApi),
             sinon.createStubInstance(k8s.EventsApi),
-            sinon.createStubInstance(k8s.EventsV1Api)
+            sinon.createStubInstance(k8s.EventsV1Api),
+            sinon.createStubInstance(k8s.CoreV1Api)
         ];
 
         apiGroups = [
@@ -82,6 +83,426 @@ describe('k8s-api', () => {
                     shortNames:
                       - ev
                     storageVersionHash: r2yiGXH7wu8=
+            `),
+            k8sManifest(`
+                kind: APIResourceList
+                groupVersion: v1
+                resources:
+                  - name: bindings
+                    singularName: ''
+                    namespaced: true
+                    kind: Binding
+                    verbs:
+                      - create
+                  - name: componentstatuses
+                    singularName: ''
+                    namespaced: false
+                    kind: ComponentStatus
+                    verbs:
+                      - get
+                      - list
+                    shortNames:
+                      - cs
+                  - name: configmaps
+                    singularName: ''
+                    namespaced: true
+                    kind: ConfigMap
+                    verbs:
+                      - create
+                      - delete
+                      - deletecollection
+                      - get
+                      - list
+                      - patch
+                      - update
+                      - watch
+                    shortNames:
+                      - cm
+                    storageVersionHash: qFsyl6wFWjQ=
+                  - name: endpoints
+                    singularName: ''
+                    namespaced: true
+                    kind: Endpoints
+                    verbs:
+                      - create
+                      - delete
+                      - deletecollection
+                      - get
+                      - list
+                      - patch
+                      - update
+                      - watch
+                    shortNames:
+                      - ep
+                    storageVersionHash: fWeeMqaN/OA=
+                  - name: events
+                    singularName: ''
+                    namespaced: true
+                    kind: Event
+                    verbs:
+                      - create
+                      - delete
+                      - deletecollection
+                      - get
+                      - list
+                      - patch
+                      - update
+                      - watch
+                    shortNames:
+                      - ev
+                    storageVersionHash: r2yiGXH7wu8=
+                  - name: limitranges
+                    singularName: ''
+                    namespaced: true
+                    kind: LimitRange
+                    verbs:
+                      - create
+                      - delete
+                      - deletecollection
+                      - get
+                      - list
+                      - patch
+                      - update
+                      - watch
+                    shortNames:
+                      - limits
+                    storageVersionHash: EBKMFVe6cwo=
+                  - name: namespaces
+                    singularName: ''
+                    namespaced: false
+                    kind: Namespace
+                    verbs:
+                      - create
+                      - delete
+                      - get
+                      - list
+                      - patch
+                      - update
+                      - watch
+                    shortNames:
+                      - ns
+                    storageVersionHash: Q3oi5N2YM8M=
+                  - name: namespaces/finalize
+                    singularName: ''
+                    namespaced: false
+                    kind: Namespace
+                    verbs:
+                      - update
+                  - name: namespaces/status
+                    singularName: ''
+                    namespaced: false
+                    kind: Namespace
+                    verbs:
+                      - get
+                      - patch
+                      - update
+                  - name: nodes
+                    singularName: ''
+                    namespaced: false
+                    kind: Node
+                    verbs:
+                      - create
+                      - delete
+                      - deletecollection
+                      - get
+                      - list
+                      - patch
+                      - update
+                      - watch
+                    shortNames:
+                      - 'no'
+                    storageVersionHash: XwShjMxG9Fs=
+                  - name: nodes/proxy
+                    singularName: ''
+                    namespaced: false
+                    kind: NodeProxyOptions
+                    verbs:
+                      - create
+                      - delete
+                      - get
+                      - patch
+                      - update
+                  - name: nodes/status
+                    singularName: ''
+                    namespaced: false
+                    kind: Node
+                    verbs:
+                      - get
+                      - patch
+                      - update
+                  - name: persistentvolumeclaims
+                    singularName: ''
+                    namespaced: true
+                    kind: PersistentVolumeClaim
+                    verbs:
+                      - create
+                      - delete
+                      - deletecollection
+                      - get
+                      - list
+                      - patch
+                      - update
+                      - watch
+                    shortNames:
+                      - pvc
+                    storageVersionHash: QWTyNDq0dC4=
+                  - name: persistentvolumeclaims/status
+                    singularName: ''
+                    namespaced: true
+                    kind: PersistentVolumeClaim
+                    verbs:
+                      - get
+                      - patch
+                      - update
+                  - name: persistentvolumes
+                    singularName: ''
+                    namespaced: false
+                    kind: PersistentVolume
+                    verbs:
+                      - create
+                      - delete
+                      - deletecollection
+                      - get
+                      - list
+                      - patch
+                      - update
+                      - watch
+                    shortNames:
+                      - pv
+                    storageVersionHash: HN/zwEC+JgM=
+                  - name: persistentvolumes/status
+                    singularName: ''
+                    namespaced: false
+                    kind: PersistentVolume
+                    verbs:
+                      - get
+                      - patch
+                      - update
+                  - name: pods
+                    singularName: ''
+                    namespaced: true
+                    kind: Pod
+                    verbs:
+                      - create
+                      - delete
+                      - deletecollection
+                      - get
+                      - list
+                      - patch
+                      - update
+                      - watch
+                    shortNames:
+                      - po
+                    categories:
+                      - all
+                    storageVersionHash: xPOwRZ+Yhw8=
+                  - name: pods/attach
+                    singularName: ''
+                    namespaced: true
+                    kind: PodAttachOptions
+                    verbs:
+                      - create
+                      - get
+                  - name: pods/binding
+                    singularName: ''
+                    namespaced: true
+                    kind: Binding
+                    verbs:
+                      - create
+                  - name: pods/eviction
+                    singularName: ''
+                    namespaced: true
+                    group: policy
+                    version: v1beta1
+                    kind: Eviction
+                    verbs:
+                      - create
+                  - name: pods/exec
+                    singularName: ''
+                    namespaced: true
+                    kind: PodExecOptions
+                    verbs:
+                      - create
+                      - get
+                  - name: pods/log
+                    singularName: ''
+                    namespaced: true
+                    kind: Pod
+                    verbs:
+                      - get
+                  - name: pods/portforward
+                    singularName: ''
+                    namespaced: true
+                    kind: PodPortForwardOptions
+                    verbs:
+                      - create
+                      - get
+                  - name: pods/proxy
+                    singularName: ''
+                    namespaced: true
+                    kind: PodProxyOptions
+                    verbs:
+                      - create
+                      - delete
+                      - get
+                      - patch
+                      - update
+                  - name: pods/status
+                    singularName: ''
+                    namespaced: true
+                    kind: Pod
+                    verbs:
+                      - get
+                      - patch
+                      - update
+                  - name: podtemplates
+                    singularName: ''
+                    namespaced: true
+                    kind: PodTemplate
+                    verbs:
+                      - create
+                      - delete
+                      - deletecollection
+                      - get
+                      - list
+                      - patch
+                      - update
+                      - watch
+                    storageVersionHash: LIXB2x4IFpk=
+                  - name: replicationcontrollers
+                    singularName: ''
+                    namespaced: true
+                    kind: ReplicationController
+                    verbs:
+                      - create
+                      - delete
+                      - deletecollection
+                      - get
+                      - list
+                      - patch
+                      - update
+                      - watch
+                    shortNames:
+                      - rc
+                    categories:
+                      - all
+                    storageVersionHash: Jond2If31h0=
+                  - name: replicationcontrollers/scale
+                    singularName: ''
+                    namespaced: true
+                    group: autoscaling
+                    version: v1
+                    kind: Scale
+                    verbs:
+                      - get
+                      - patch
+                      - update
+                  - name: replicationcontrollers/status
+                    singularName: ''
+                    namespaced: true
+                    kind: ReplicationController
+                    verbs:
+                      - get
+                      - patch
+                      - update
+                  - name: resourcequotas
+                    singularName: ''
+                    namespaced: true
+                    kind: ResourceQuota
+                    verbs:
+                      - create
+                      - delete
+                      - deletecollection
+                      - get
+                      - list
+                      - patch
+                      - update
+                      - watch
+                    shortNames:
+                      - quota
+                    storageVersionHash: 8uhSgffRX6w=
+                  - name: resourcequotas/status
+                    singularName: ''
+                    namespaced: true
+                    kind: ResourceQuota
+                    verbs:
+                      - get
+                      - patch
+                      - update
+                  - name: secrets
+                    singularName: ''
+                    namespaced: true
+                    kind: Secret
+                    verbs:
+                      - create
+                      - delete
+                      - deletecollection
+                      - get
+                      - list
+                      - patch
+                      - update
+                      - watch
+                    storageVersionHash: S6u1pOWzb84=
+                  - name: serviceaccounts
+                    singularName: ''
+                    namespaced: true
+                    kind: ServiceAccount
+                    verbs:
+                      - create
+                      - delete
+                      - deletecollection
+                      - get
+                      - list
+                      - patch
+                      - update
+                      - watch
+                    shortNames:
+                      - sa
+                    storageVersionHash: pbx9ZvyFpBE=
+                  - name: serviceaccounts/token
+                    singularName: ''
+                    namespaced: true
+                    group: authentication.k8s.io
+                    version: v1
+                    kind: TokenRequest
+                    verbs:
+                      - create
+                  - name: services
+                    singularName: ''
+                    namespaced: true
+                    kind: Service
+                    verbs:
+                      - create
+                      - delete
+                      - get
+                      - list
+                      - patch
+                      - update
+                      - watch
+                    shortNames:
+                      - svc
+                    categories:
+                      - all
+                    storageVersionHash: 0/CO1lhkEBI=
+                  - name: services/proxy
+                    singularName: ''
+                    namespaced: true
+                    kind: ServiceProxyOptions
+                    verbs:
+                      - create
+                      - delete
+                      - get
+                      - patch
+                      - update
+                  - name: services/status
+                    singularName: ''
+                    namespaced: true
+                    kind: Service
+                    verbs:
+                      - get
+                      - patch
+                      - update
+                apiVersion: v1
             `)
         ];
 
@@ -90,6 +511,7 @@ describe('k8s-api', () => {
         kubeConfig.makeApiClient.withArgs(k8s.AdmissionregistrationApi).returns(apiClients[0]);
         kubeConfig.makeApiClient.withArgs(k8s.EventsApi).returns(apiClients[1]);
         kubeConfig.makeApiClient.withArgs(k8s.EventsV1Api).returns(apiClients[2]);
+        kubeConfig.makeApiClient.withArgs(k8s.CoreV1Api).returns(apiClients[3]);
 
         apiClients[0][apiGroupResourceFunction].returns(Promise.resolve({
             response: {
@@ -106,6 +528,12 @@ describe('k8s-api', () => {
         apiClients[2][apiResourcesFunction].returns(Promise.resolve({
             response: {
                 body: resourceLists[0]
+            }
+        }));
+
+        apiClients[3][apiResourcesFunction].returns(Promise.resolve({
+            response: {
+                body: resourceLists[1]
             }
         }));
 
@@ -148,6 +576,40 @@ describe('k8s-api', () => {
         })
     })
 
+    describe('_applyResourceListValuesToMaps', () => {
+
+        it('should convert the resource list kind to lowercase but avoid checking for the object in k8s javascript client', () => {
+            /**
+             * This is important because not all resource kinds returned in the resources of the resourceList objects are found
+             * in the k8s module object. One such object is kind NodeProxyOptions included in the resource list in the beforeEach.
+             */
+            const resourceList = k8sManifest(`
+                kind: APIResourceList
+                apiVersion: v1
+                groupVersion: events.k8s.io/v1beta1
+                resources:
+                  - name: events2
+                    singularName: ''
+                    namespaced: true
+                    kind: NodeProxyOptions
+                    verbs:
+                      - create
+                      - delete
+                      - deletecollection
+                      - get
+                      - list
+                      - patch
+                      - update
+                      - watch
+                    shortNames:
+                      - ev
+                    storageVersionHash: r2yiGXH7wu8=
+            `);
+
+            expect(subject._applyResourceListValuesToMaps.bind(subject, null, resourceList)).not.to.throw();
+        })
+    })
+
     describe('_initClientMappings', () => {
 
         it('should provide a mapping from api version to api client', async () => {
@@ -161,7 +623,7 @@ describe('k8s-api', () => {
 
             await subject._initClientMappings(kubeConfig, apis);
 
-            const mappedApis = subject._kindToApiClients[k8sKind(resourceLists[0].resources[0].kind)];
+            const mappedApis = subject._kindToApiClients[resourceLists[0].resources[0].kind.toLowerCase()];
             expect(Array.isArray(mappedApis)).to.equal(true);
             expect(mappedApis[0]).to.equal(apiClients[2]);
         })
@@ -170,8 +632,13 @@ describe('k8s-api', () => {
 
             await subject._initClientMappings(kubeConfig, apis);
 
-            const groupVersion = subject._kindToGroupVersion[k8sKind(resourceLists[0].resources[0].kind)];
-            expect(groupVersion).to.equal(resourceLists[0].groupVersion);
+            for (const resourceList of resourceLists) {
+                for (const resource of resourceList.resources) {
+                    const actualGroupVersions = subject._kindToGroupVersion[k8sKind(resource.kind).toLowerCase()];
+                    expect(actualGroupVersions).to.include(resourceList.groupVersion);
+                }
+            }
+            expect(resourceLists.length).to.be.greaterThan(0);
         })
 
         it('should provide a map from group to preferred version', async () => {
@@ -187,18 +654,41 @@ describe('k8s-api', () => {
 
     })
 
+    describe('preferredVersions', () => {
+        // TODO
+    })
+
     describe('exists', () => {
-
-
+        // TODO
     })
 
     describe('read', () => {
-
+        // TODO
     })
 
     describe('_readStrategy', () => {
+        // TODO
+    })
 
+    describe('_readClusterObjectStrategy', () => {
 
+        /**
+         * NOTE: The kinds used here have to be kinds accepted by the mock APIs because they're created
+         * using sinon.createStubInstance. Therefore, the stubs are literally created from functions that
+         * exist on the class passed in.
+         */
+
+        // it('should return a non-namespaced function if one exists', () => {
+        //     const api = null;
+        //     const kind = '';
+        //     const name = 'metadata.name';
+        //     const namespace = 'metadata.namespace';
+        //     const strategy = subject._readClusterObjectStrategy(api, kind, name, namespace);
+        // })
+
+        it('should return a namespaced function if one exists', () => {
+
+        })
     })
 
     describe('_forEachApiGroup', () => {
@@ -209,7 +699,7 @@ describe('k8s-api', () => {
 
             const requestResult = {
                 response: {
-                    body: {},
+                    body: apiGroups[0],
                     statusCode: 200
                 },
             };
@@ -236,7 +726,7 @@ describe('k8s-api', () => {
 
             const requestResult = {
                 response: {
-                    body: {},
+                    body: resourceLists[0],
                     statusCode: 200
                 },
             };
@@ -248,13 +738,13 @@ describe('k8s-api', () => {
             await subject._forEachApiResourceList(kubeConfig, callback, apis);
 
             expect(apiClients[2][resourceFunctionName]).to.have.been.calledOnce;
-            expect(callback).to.have.been.calledOnce;
+            expect(callback).to.have.been.called;
         })
     })
 
     describe('_forEachApi', () => {
 
-        const resourceFunctionName = 'getAPIGroup';
+        const resourceFunctionName = apiGroupResourceFunction;
 
         it('should throw an error if an invalid kube config is supplied', async () => {
             await expect(subject._forEachApi({}, resourceFunctionName, (_, __) => { }, apis)).to.be.rejected;
@@ -264,7 +754,7 @@ describe('k8s-api', () => {
 
             const requestResult = {
                 response: {
-                    body: {},
+                    body: apiGroups[0],
                     statusCode: 200
                 },
             };
@@ -295,7 +785,7 @@ describe('k8s-api', () => {
 
             const requestResult = {
                 response: {
-                    body: {},
+                    body: apiGroups[0],
                     statusCode: 200
                 },
             };
@@ -315,7 +805,7 @@ describe('k8s-api', () => {
 
             const requestResult = {
                 response: {
-                    body: {},
+                    body: apiGroups[0],
                     statusCode: 200
                 },
             };
@@ -335,7 +825,7 @@ describe('k8s-api', () => {
 
             const requestResult = {
                 response: {
-                    body: {},
+                    body: apiGroups[0],
                     statusCode: 400
                 },
             };
@@ -350,7 +840,7 @@ describe('k8s-api', () => {
         it('should ignore error 404 not found', async () => {
             const requestResult = {
                 response: {
-                    body: {},
+                    body: apiGroups[0],
                     statusCode: 404
                 },
             };
@@ -360,6 +850,20 @@ describe('k8s-api', () => {
             apiClients[1][resourceFunctionName].returns(Promise.reject(requestResult));
 
             await expect(subject._forEachApi(kubeConfig, resourceFunctionName, (_, __) => { }, apis)).not.to.be.rejected;
+        })
+
+        it('should throw propogate the error if status code is not defined', async () => {
+            const requestResult = {
+                response: {
+                    body: apiGroups[0],
+                },
+            };
+
+            apiClients[0][resourceFunctionName].returns(Promise.reject(requestResult));
+
+            apiClients[1][resourceFunctionName].returns(Promise.reject(requestResult));
+
+            await expect(subject._forEachApi(kubeConfig, resourceFunctionName, (_, __) => { }, apis)).to.be.rejected;
         })
     })
 })

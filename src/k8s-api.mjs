@@ -1,6 +1,9 @@
 import k8s from '@kubernetes/client-node';
+import { k8sManifest, stringify } from '@thinkdeep/k8s-manifest';
 import {ErrorNotFound} from './error/error-not-found.mjs'
 import { k8sKind } from './k8s-kind.mjs';
+
+const DEFAULT_NAMESPACE = 'default';
 
 class K8sApi {
 
@@ -34,42 +37,53 @@ class K8sApi {
             && (Object.keys(this._kindToGroupVersion).length > 0) && (Object.keys(this._groupVersionToPreferredVersion).length > 0);
     }
 
+
+    _applyPreferredVersionToGroupMap(_, apiGroup) {
+
+        for (const entry of apiGroup.versions) {
+            /**
+             * Initialize group version to preferred api version.
+             */
+            this._groupVersionToPreferredVersion[entry.groupVersion.toLowerCase()] = apiGroup.preferredVersion.groupVersion;
+        }
+    }
+
+    _applyResourceListValuesToMaps(apiClient, resourceList) {
+        /**
+         * Initialize apiVersion-specific client mappings.
+         */
+        this._apiVersionToApiClient[resourceList.groupVersion.toLowerCase()] = apiClient;
+
+        for (const resource of resourceList.resources) {
+
+            const resourceKind = k8sKind(resource.kind).toLowerCase();
+            if (!this._kindToApiClients[resourceKind]) {
+                this._kindToApiClients[resourceKind] = [];
+            }
+
+            /**
+             * Initialize broadcast capability based on kind.
+             */
+            this._kindToApiClients[resourceKind].push(apiClient);
+
+
+            if (!this._kindToGroupVersion[resourceKind]) {
+                this._kindToGroupVersion[resourceKind] = [];
+            }
+
+            /**
+             * Enable mapping of kind to group version for preferred version determination.
+             */
+            this._kindToGroupVersion[resourceKind].push(resourceList.groupVersion);
+        }
+
+    }
+
     async _initClientMappings(kubeConfig, apis = k8s.APIS) {
 
         return Promise.all([
-            this._forEachApiGroup(kubeConfig, (_, apiGroup) => {
-                for (const entry of apiGroup.versions) {
-                    /**
-                     * Initialize group version to preferred api version.
-                     */
-                    this._groupVersionToPreferredVersion[entry.groupVersion] = apiGroup.preferredVersion.groupVersion;
-                }
-            }, apis),
-            this._forEachApiResourceList(kubeConfig, (apiClient, resourceList) => {
-
-                /**
-                 * Initialize apiVersion-specific client mappings.
-                 */
-                this._apiVersionToApiClient[resourceList.groupVersion.toLowerCase()] = apiClient;
-
-                for (const resource of resourceList.resources) {
-
-                    const resourceKind = k8sKind(resource.kind);
-                    if (!this._kindToApiClients[resourceKind]) {
-                        this._kindToApiClients[resourceKind] = [];
-                    }
-
-                    /**
-                     * Initialize broadcast capability based on kind.
-                     */
-                    this._kindToApiClients[resourceKind].push(apiClient);
-
-                    /**
-                     * Enable mapping of kind to group version for preferred version determination.
-                     */
-                    this._kindToGroupVersion[resourceKind] = resourceList.groupVersion;
-                }
-            }, apis)
+            this._forEachApiGroup(kubeConfig, this._applyPreferredVersionToGroupMap.bind(this), apis),
+            this._forEachApiResourceList(kubeConfig, this._applyResourceListValuesToMaps.bind(this), apis)
         ]);
     };
 
@@ -114,26 +128,40 @@ class K8sApi {
             try {
                 const {response: {body}} = await fetchResources.bind(apiClient)();
 
-                callback(apiClient, body);
+                callback(apiClient, k8sManifest(body));
             } catch (e) {
 
-                const {response: {statusCode}} = e;
-                if (statusCode !== 404) {
+                if (!e?.response?.statusCode || e?.response?.statusCode !== 404) {
                     throw e;
                 }
             }
         }
     }
 
+    _groupVersions(kind) {
+        return this._kindToGroupVersion[k8sKind(kind).toLowerCase()] || [];
+    }
+
     _clientApis(kind) {
-        return this._kindToApiClients[k8sKind(kind)] || [];
+        return this._kindToApiClients[k8sKind(kind).toLowerCase()] || [];
     }
 
     _clientApi(apiVersion) {
         return this._apiVersionToApiClient[apiVersion.toLowerCase()] || null;
     }
 
-    // TODO Test
+    _preferredVersions(groupVersions) {
+
+        /**
+         * A given kind can be part of multiple groups. Therefore, there are multiple preferred versions.
+         */
+        let preferredVersions = [];
+        for (const groupVersion of groupVersions) {
+            preferredVersions.push(this._groupVersionToPreferredVersion[groupVersion.toLowerCase()] || null);
+        }
+        return preferredVersions.filter((val) => !!val);
+    }
+
     /**
      * Get the preferred api version.
      *
@@ -142,19 +170,19 @@ class K8sApi {
      */
     preferredVersion(kind) {
 
-        const kindGroup = this._kindToGroupVersion[k8sKind(kind)];
+        const kindGroups = this._groupVersions(kind);
 
-        if (!kindGroup) {
-            throw new Error(`The kind ${kind} didn't have a registered group version.`);
+        if (kindGroups.length <= 0) {
+            throw new Error(`The kind ${kind} didn't have any registered group versions.`);
         }
 
-        const targetVersion = this._groupVersionToPreferredVersion[kindGroup];
+        const targetVersions = this._preferredVersions(kindGroups);
 
-        if (!targetVersion) {
-            throw new Error(`The kind ${kind} with group version ${kindGroup} didn't have a registered preferred version.`);
+        if (targetVersions.length <= 0) {
+            throw new Error(`The kind ${kind} didn't have a registered preferred version.`);
         }
 
-        return targetVersion;
+        return targetVersions[0];
     }
 
     /**
@@ -172,8 +200,7 @@ class K8sApi {
                 return this._configuredManifest(received.response.body);
             } catch (e) {
 
-                const {response: {statusCode}} = e;
-                if (statusCode !== 409) {
+                if (!e?.response?.statusCode || e?.response?.statusCode !== 409) {
                     throw e;
                 }
 
@@ -252,19 +279,28 @@ class K8sApi {
 
         let strategies = [];
         for (const api of apis) {
-            strategies.push(this._readKindThroughApiStrategy(api, _kind, name, namespace));
+            strategies.push(this._readClusterObjectStrategy(api, _kind, name, namespace));
         }
 
         return this._handleStrategyExecution.bind(this, strategies);
     }
 
-    _readKindThroughApiStrategy(api, kind, name, namespace) {
+    /**
+     * Get the read function from the k8s javascript client API.
+     *
+     * @param {any} api K8s javascript client API with the needed function.
+     * @param {String} kind K8s kind.
+     * @param {String} name Name of the object as seen in the metadata.name field.
+     * @param {String} [namespace = DEFAULT_NAMESPACE] Namespace of the object as seen in the metadata.namespace field.
+     * @returns Function to use to read the specified cluster object.
+     */
+    _readClusterObjectStrategy(api, kind, name, namespace = DEFAULT_NAMESPACE) {
 
         const _kind = k8sKind(kind);
         if (api[`read${_kind}`]) {
 
             return api[`read${_kind}`].bind(api, name);
-        } else if (!!namespace && api[`readNamespaced${_kind}`]) {
+        } else if (api[`readNamespaced${_kind}`]) {
 
             return api[`readNamespaced${_kind}`].bind(api, name, namespace);
         } else {
@@ -367,14 +403,13 @@ class K8sApi {
                 throw new Error(`The API response didn't include a valid body. Received: ${body}`);
             }
 
-            for (let i = 0; i < body.items.length; i++) {
-                body.items[i].apiVersion = body.apiVersion;
-
-                const itemTypeName = body.items[i].constructor.name || '';
-                body.items[i].kind = k8sKind(itemTypeName.toLowerCase());
+            const kindList = k8sManifest(body);
+            for (let i = 0; i < kindList.items.length; i++) {
+                kindList.items[i].apiVersion = kindList.apiVersion;
+                kindList.items[i].kind = k8sKind(kindList.items[i]?.constructor?.name || '');
             }
 
-            return body;
+            return kindList;
         }));
     }
 
@@ -461,9 +496,8 @@ class K8sApi {
             try {
                 return await strategy();
             } catch (e) {
-                const {response: {statusCode}} = e;
 
-                if (statusCode !== 404) {
+                if (!e?.response?.statusCode || e?.response?.statusCode !== 404) {
                     throw e;
                 }
 
@@ -478,7 +512,7 @@ class K8sApi {
             configuration.kind = k8sKind(configuration.constructor.name);
         }
 
-        return configuration;
+        return k8sManifest(configuration);
     }
 };
 
