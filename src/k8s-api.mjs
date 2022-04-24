@@ -168,7 +168,14 @@ class K8sApi {
     }
 
     _clientApi(apiVersion) {
-        return this._apiVersionToApiClient[apiVersion.toLowerCase()] || null;
+
+        const client = this._apiVersionToApiClient[apiVersion.toLowerCase()] || null;
+
+        if (!client) {
+            throw new ErrorNotFound(`The specified api version ${apiVersion} was not recognized. Are you sure you're using one accepted by k8s?`);
+        }
+
+        return client;
     }
 
     _preferredVersions(groupVersions) {
@@ -206,7 +213,7 @@ class K8sApi {
 
         const targetVersions = this._preferredVersions(kindGroups);
 
-        if (targetVersions.length <= 0) {
+        if (targetVersions.size <= 0) {
             throw new ErrorNotFound(`The kind ${kind} didn't have registered preferred versions. Are you sure you're using an accepted kind?`);
         }
 

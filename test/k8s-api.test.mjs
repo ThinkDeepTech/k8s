@@ -694,7 +694,7 @@ describe('k8s-api', () => {
     describe('preferredVersions', () => {
 
         beforeEach(async () => {
-            await subject._initClientMappings(kubeConfig, apis);
+            await subject.init(kubeConfig, apis);
         })
 
         it('should map the k8s kind to its preferred api versions', async () => {
@@ -741,10 +741,44 @@ describe('k8s-api', () => {
         })
     })
 
+    describe('_clientApis', () => {
+
+        beforeEach(async () => {
+            await subject.init(kubeConfig, apis);
+        })
+
+        it('should be case independent', () => {
+            const first = subject._clientApis('Event');
+            const second = subject._clientApis('eVeNT');
+            expect(first).not.to.equal(undefined);
+            expect(first).not.to.equal(null);
+            expect(first).to.equal(second);
+        })
+    })
+
+    describe('_clientApi', () => {
+
+        beforeEach(async () => {
+            await subject.init(kubeConfig, apis);
+        })
+
+        it('should be case independent', () => {
+            const first = subject._clientApi('events.k8s.io/v1beta1');
+            const second = subject._clientApi('eVenTS.K8s.IO/v1BETA1');
+            expect(first).not.to.equal(undefined);
+            expect(first).not.to.equal(null);
+            expect(first).to.equal(second);
+        })
+
+        it('should throw an error if the specified api is not found', () => {
+            expect(() => subject._clientApi('someunrecognizedapi.io/v1')).to.throw(ErrorNotFound);
+        })
+    })
+
     describe('_groupVersions', () => {
 
         beforeEach(async () => {
-            await subject._initClientMappings(kubeConfig, apis);
+            await subject.init(kubeConfig, apis);
         })
 
         it('should return a set', () => {
