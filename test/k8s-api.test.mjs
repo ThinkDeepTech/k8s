@@ -10,6 +10,7 @@ chai.use(chaiAsPromised);
 
 import {K8sApi} from '../src/k8s-api.mjs';
 import {k8sKind} from '../src/k8s-kind.mjs';
+import {ErrorNotFound} from '../src/error/error-not-found.mjs';
 
 describe('k8s-api', () => {
 
@@ -674,11 +675,36 @@ describe('k8s-api', () => {
             }
         })
 
+        it('should setup the initial preferred version to be the group version after which it will be overwritten by the preferred group version', async () => {
+
+            await subject._initClientMappings(kubeConfig, apis);
+
+            /**
+             * It's important that Event be used as the kind here because it appears in multiple locations
+             * in the resource lists and is part of a group that doesn't have an entry in api groups.
+             */
+            const actualPreferredVersions = subject.preferredVersions('Event')
+            expect(actualPreferredVersions).to.include('events.k8s.io/v1');
+            expect(actualPreferredVersions).to.include('v1');
+
+        })
+
     })
 
     describe('preferredVersions', () => {
-        it('should map the k8s kind to its preferred api versions', async () => {
 
+        beforeEach(async () => {
+            await subject._initClientMappings(kubeConfig, apis);
+        })
+
+        it('should map the k8s kind to its preferred api versions', async () => {
+            const actualPreferredVersions = subject.preferredVersions('Event')
+            expect(actualPreferredVersions).to.include('events.k8s.io/v1');
+            expect(actualPreferredVersions).to.include('v1');
+        })
+
+        it('should throw an error if an invalid kind is used', () => {
+            expect(() => subject.preferredVersions('NonExistantKind')).to.throw(ErrorNotFound);
         })
     })
 

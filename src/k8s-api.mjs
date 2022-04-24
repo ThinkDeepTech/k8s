@@ -41,6 +41,7 @@ class K8sApi {
     _applyPreferredVersionToGroupMap(_, apiGroup) {
 
         for (const entry of apiGroup.versions) {
+
             /**
              * Initialize group version to preferred api version.
              */
@@ -68,23 +69,36 @@ class K8sApi {
 
 
             if (!this._kindToGroupVersion[resourceKind]) {
-                this._kindToGroupVersion[resourceKind] = [];
+                this._kindToGroupVersion[resourceKind] = new Set();
             }
 
             /**
              * Enable mapping of kind to group version for preferred version determination.
              */
-            this._kindToGroupVersion[resourceKind].push(resourceList.groupVersion);
+            this._kindToGroupVersion[resourceKind].add(resourceList.groupVersion);
+
+            /**
+             * Some API groups aren't listed so the initial preferred version will be equivalent to
+             * the current group version.
+             */
+            this._groupVersionToPreferredVersion[resourceList.groupVersion.toLowerCase()] = resourceList.groupVersion;
         }
 
     }
 
     async _initClientMappings(kubeConfig, apis = k8s.APIS) {
 
-        return Promise.all([
-            this._forEachApiGroup(kubeConfig, this._applyPreferredVersionToGroupMap.bind(this), apis),
-            this._forEachApiResourceList(kubeConfig, this._applyResourceListValuesToMaps.bind(this), apis)
-        ]);
+        /**
+         * The ordering of the following functions is important due to group to preferred version mapping.
+         * Some api groups may not return (i.e, v1). The first function initializes the preferred group
+         * version to its current group version and the second overwrites that with the actual registered
+         * preferred version returned by the API. Therefore, the order should be:
+         *
+         * resource list processing -> api group processing.
+         */
+        await this._forEachApiResourceList(kubeConfig, this._applyResourceListValuesToMaps.bind(this), apis);
+
+        await this._forEachApiGroup(kubeConfig, this._applyPreferredVersionToGroupMap.bind(this), apis);
     };
 
     async _forEachApiGroup(kubeConfig, callback, apis = k8s.APIS) {
@@ -139,7 +153,14 @@ class K8sApi {
     }
 
     _groupVersions(kind) {
-        return this._kindToGroupVersion[k8sKind(kind).toLowerCase()] || [];
+
+        const groupVersions = this._kindToGroupVersion[k8sKind(kind).toLowerCase()] || new Set();
+
+        if (groupVersions.length <= 0) {
+            throw new ErrorNotFound(`The kind ${kind} didn't have any registered group versions. Are you sure you're using an accepted kind?`);
+        }
+
+        return groupVersions;
     }
 
     _clientApis(kind) {
@@ -157,9 +178,14 @@ class K8sApi {
          */
         let preferredVersions = [];
         for (const groupVersion of groupVersions) {
-            preferredVersions.push(this._groupVersionToPreferredVersion[groupVersion.toLowerCase()] || null);
+            const registeredPreferredVersion = this._groupVersionToPreferredVersion[groupVersion.toLowerCase()] || '';
+            preferredVersions.push(registeredPreferredVersion);
         }
-        return preferredVersions.filter((val) => !!val);
+        return new Set(preferredVersions.filter((val) => !!val));
+    }
+
+    _registeredKind(kind) {
+        return kind.toLowerCase() in this._kindToGroupVersion;
     }
 
     /**
@@ -172,16 +198,16 @@ class K8sApi {
      */
     preferredVersions(kind) {
 
-        const kindGroups = this._groupVersions(kind);
-
-        if (kindGroups.length <= 0) {
-            throw new Error(`The kind ${kind} didn't have any registered group versions.`);
+        if (!this._registeredKind(kind)) {
+            throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
         }
+
+        const kindGroups = this._groupVersions(kind);
 
         const targetVersions = this._preferredVersions(kindGroups);
 
         if (targetVersions.length <= 0) {
-            throw new Error(`The kind ${kind} didn't have registered preferred versions.`);
+            throw new ErrorNotFound(`The kind ${kind} didn't have registered preferred versions. Are you sure you're using an accepted kind?`);
         }
 
         return targetVersions;
@@ -214,6 +240,11 @@ class K8sApi {
     _creationStrategy(manifest) {
 
         const kind = k8sKind(manifest.kind);
+
+        if (!this._registeredKind(kind)) {
+            throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
+        }
+
         const api = this._clientApi(manifest.apiVersion);
         if (api[`createNamespaced${kind}`]) {
 
@@ -239,6 +270,10 @@ class K8sApi {
      */
     async exists(kind, name, namespace) {
 
+        if (!this._registeredKind(kind)) {
+            throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
+        }
+
         try {
             await this.read( k8sKind(kind), name, namespace );
             return true;
@@ -263,6 +298,10 @@ class K8sApi {
      */
     async read(kind, name, namespace) {
 
+        if (!this._registeredKind(kind)) {
+            throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
+        }
+
         const results = await this._readStrategy( k8sKind(kind), name, namespace )();
 
         if (results.length === 0) {
@@ -276,6 +315,10 @@ class K8sApi {
     _readStrategy(kind, name, namespace) {
 
         const _kind = k8sKind(kind);
+
+        if (!this._registeredKind(_kind)) {
+            throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
+        }
 
         const apis = this._clientApis(_kind);
 
@@ -297,6 +340,10 @@ class K8sApi {
      * @returns Function to use to read the specified cluster object.
      */
     _readClusterObjectStrategy(api, kind, name, namespace = DEFAULT_NAMESPACE) {
+
+        if (!this._registeredKind(kind)) {
+            throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
+        }
 
         const _kind = k8sKind(kind);
         if (api[`read${_kind}`]) {
@@ -341,6 +388,10 @@ class K8sApi {
 
         const kind = k8sKind(manifest.kind);
 
+        if (!this._registeredKind(kind)) {
+            throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
+        }
+
         const apis = this._clientApis(kind);
 
         let strategies = [];
@@ -368,6 +419,11 @@ class K8sApi {
         };
 
         const _kind = k8sKind(kind);
+
+        if (!this._registeredKind(_kind)) {
+            throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
+        }
+
         if (api[`patchNamespaced${_kind}`]) {
 
             return api[`patchNamespaced${_kind}`].bind(
@@ -395,6 +451,10 @@ class K8sApi {
      */
     async listAll(kind, namespace) {
 
+        if (!this._registeredKind(kind)) {
+            throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
+        }
+
         const responses = await this._listStrategy(kind, namespace)();
 
         return Promise.all(responses.map((data) => {
@@ -418,6 +478,11 @@ class K8sApi {
     _listStrategy(kind, namespace) {
 
         const _kind = k8sKind(kind);
+
+        if (!this._registeredKind(_kind)) {
+            throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
+        }
+
         const apis = this._clientApis(kind);
 
         let strategies = [];
@@ -433,6 +498,11 @@ class K8sApi {
     _listKindThroughApiStrategy(api, kind, namespace) {
 
         const _kind = k8sKind(kind);
+
+        if (!this._registeredKind(_kind)) {
+            throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
+        }
+
         if (!namespace && api[`list${_kind}ForAllNamespaces`]) {
 
             return api[`list${_kind}ForAllNamespaces`].bind(api);
@@ -465,12 +535,12 @@ class K8sApi {
             throw new Error(`The manifest value is invalid: ${manifest}`);
         }
 
-        if (!manifest.kind) {
-            throw new Error(`The manifest requires a kind.`);
+        if (!this._registeredKind(manifest.kind)) {
+            throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
         }
 
         if (!manifest.apiVersion) {
-            throw new Error(`The manifest requires an api version.`);
+            throw new ErrorNotFound(`The manifest requires an api version.`);
         }
 
         const api = this._clientApi(manifest.apiVersion);
@@ -480,6 +550,11 @@ class K8sApi {
     _deleteKindThroughApiStrategy(api, kind, manifest) {
 
         const _kind = k8sKind(kind);
+
+        if (!this._registeredKind(_kind)) {
+            throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
+        }
+
         if (api[`deleteNamespaced${_kind}`]) {
 
             return api[`deleteNamespaced${_kind}`].bind(api, manifest.metadata.name, manifest.metadata.namespace);
