@@ -368,7 +368,7 @@ class K8sApi {
 
             const namespaceText = namespace ? `and namespace ${namespace}` : ``;
 
-            throw new Error(`
+            throw new ErrorNotFound(`
                 The read function for kind ${kind} ${namespaceText} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
             `)
         }

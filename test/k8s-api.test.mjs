@@ -717,7 +717,14 @@ describe('k8s-api', () => {
     })
 
     describe('_readStrategy', () => {
-        // TODO
+
+        beforeEach(async () => {
+            await subject.init(kubeConfig, apis);
+        })
+
+        it('should reject unknown kinds', () => {
+            expect(() => subject._readStrategy('UnknownKind', 'unimportant', 'unimportant')).to.throw(ErrorNotFound);
+        })
     })
 
     describe('_readClusterObjectStrategy', () => {
@@ -744,10 +751,16 @@ describe('k8s-api', () => {
             const namespace = 'metadata.namespace';
             const strategy = subject._readClusterObjectStrategy(api, kind, name, namespace);
             expect(strategy.name).to.include(`read${kind}`);
+            expect(strategy.name).not.to.include(`readNamespaced`);
         })
 
         it('should return a namespaced function if one exists', () => {
-
+            const api = subject._clientApi('v1');
+            const kind = 'Event';
+            const name = 'metadata.name';
+            const namespace = 'metadata.namespace';
+            const strategy = subject._readClusterObjectStrategy(api, kind, name, namespace);
+            expect(strategy.name).to.include(`readNamespaced${kind}`);
         })
     })
 
