@@ -9,7 +9,7 @@ chai.use(sinonChai);
 chai.use(chaiAsPromised);
 
 import {K8sApi} from '../src/k8s-api.mjs';
-import {k8sKind} from '../src/k8s-kind.mjs';
+import {normalizeKind} from '../src/normalize-kind.mjs';
 import {ErrorNotFound} from '../src/error/error-not-found.mjs';
 
 describe('k8s-api', () => {
@@ -657,7 +657,7 @@ describe('k8s-api', () => {
             const resList = resourceLists();
             for (const [_, resourceList] of Object.entries(resList)) {
                 for (const resource of resourceList.resources) {
-                    const actualGroupVersions = subject._kindToGroupVersion[k8sKind(resource.kind).toLowerCase()];
+                    const actualGroupVersions = subject._kindToGroupVersion[normalizeKind(resource.kind).toLowerCase()];
                     expect(actualGroupVersions).to.include(resourceList.groupVersion);
                 }
             }
@@ -728,16 +728,46 @@ describe('k8s-api', () => {
          * exist on the class passed in.
          */
 
-        // it('should return a non-namespaced function if one exists', () => {
-        //     const api = null;
-        //     const kind = '';
-        //     const name = 'metadata.name';
-        //     const namespace = 'metadata.namespace';
-        //     const strategy = subject._readClusterObjectStrategy(api, kind, name, namespace);
-        // })
+        beforeEach(async () => {
+            await subject.init(kubeConfig, apis);
+        })
+
+        it('should reject unknown kinds', () => {
+            const api = subject._clientApi('v1');
+            expect(() => subject._readClusterObjectStrategy(api, 'UnknownKind', 'unimportant', 'unimportant')).to.throw(ErrorNotFound);
+        })
+
+        it('should return a non-namespaced function if one exists', () => {
+            const api = subject._clientApi('v1');
+            const kind = 'Namespace';
+            const name = 'metadata.name';
+            const namespace = 'metadata.namespace';
+            const strategy = subject._readClusterObjectStrategy(api, kind, name, namespace);
+            expect(strategy.name).to.include(`read${kind}`);
+        })
 
         it('should return a namespaced function if one exists', () => {
 
+        })
+    })
+
+    describe('_registeredKind', () => {
+        beforeEach(async () => {
+            await subject.init(kubeConfig, apis);
+        })
+
+        it('should indicate true for kinds registered', () => {
+            expect(subject._registeredKind('event')).to.equal(true);
+        })
+
+        it('should indicate false for kind that are not registered', () => {
+            expect(subject._registeredKind('notregisteredkind1')).to.equal(false);
+        })
+
+        it('should be case insensitive', () => {
+            const first = subject._registeredKind('event');
+            const second = subject._registeredKind('EvENt');
+            expect(first).to.equal(second);
         })
     })
 

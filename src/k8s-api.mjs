@@ -1,7 +1,7 @@
 import k8s from '@kubernetes/client-node';
 import { k8sManifest } from '@thinkdeep/k8s-manifest';
 import {ErrorNotFound} from './error/error-not-found.mjs'
-import { k8sKind } from './k8s-kind.mjs';
+import { normalizeKind } from './normalize-kind.mjs';
 
 const DEFAULT_NAMESPACE = 'default';
 
@@ -57,7 +57,7 @@ class K8sApi {
 
         for (const resource of resourceList.resources) {
 
-            const resourceKind = k8sKind(resource.kind).toLowerCase();
+            const resourceKind = normalizeKind(resource.kind).toLowerCase();
             if (!this._kindToApiClients[resourceKind]) {
                 this._kindToApiClients[resourceKind] = [];
             }
@@ -154,7 +154,7 @@ class K8sApi {
 
     _groupVersions(kind) {
 
-        const groupVersions = this._kindToGroupVersion[k8sKind(kind).toLowerCase()] || new Set();
+        const groupVersions = this._kindToGroupVersion[normalizeKind(kind).toLowerCase()] || new Set();
 
         if (groupVersions.size <= 0) {
             throw new ErrorNotFound(`The kind ${kind} didn't have any registered group versions. Are you sure you're using an accepted kind?`);
@@ -164,7 +164,7 @@ class K8sApi {
     }
 
     _clientApis(kind) {
-        return this._kindToApiClients[k8sKind(kind).toLowerCase()] || [];
+        return this._kindToApiClients[normalizeKind(kind).toLowerCase()] || [];
     }
 
     _clientApi(apiVersion) {
@@ -246,7 +246,7 @@ class K8sApi {
 
     _creationStrategy(manifest) {
 
-        const kind = k8sKind(manifest.kind);
+        const kind = normalizeKind(manifest.kind);
 
         if (!this._registeredKind(kind)) {
             throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
@@ -282,7 +282,7 @@ class K8sApi {
         }
 
         try {
-            await this.read( k8sKind(kind), name, namespace );
+            await this.read( normalizeKind(kind), name, namespace );
             return true;
         } catch (e) {
             if (e.constructor.name !== 'ErrorNotFound') {
@@ -309,7 +309,7 @@ class K8sApi {
             throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
         }
 
-        const results = await this._readStrategy( k8sKind(kind), name, namespace )();
+        const results = await this._readStrategy( normalizeKind(kind), name, namespace )();
 
         if (results.length === 0) {
             const namespaceMessage = !!namespace ? ` in namespace ${namespace}` : ``;
@@ -321,7 +321,7 @@ class K8sApi {
 
     _readStrategy(kind, name, namespace) {
 
-        const _kind = k8sKind(kind);
+        const _kind = normalizeKind(kind);
 
         if (!this._registeredKind(_kind)) {
             throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
@@ -348,11 +348,16 @@ class K8sApi {
      */
     _readClusterObjectStrategy(api, kind, name, namespace = DEFAULT_NAMESPACE) {
 
-        if (!this._registeredKind(kind)) {
+        const _kind = normalizeKind(kind);
+
+        if (!this._registeredKind(_kind)) {
             throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
         }
 
-        const _kind = k8sKind(kind);
+        if(!api) {
+            throw new Error(`Api needs to be defined.`);
+        }
+
         if (api[`read${_kind}`]) {
 
             return api[`read${_kind}`].bind(api, name);
@@ -393,7 +398,7 @@ class K8sApi {
 
     _patchStrategy(manifest) {
 
-        const kind = k8sKind(manifest.kind);
+        const kind = normalizeKind(manifest.kind);
 
         if (!this._registeredKind(kind)) {
             throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
@@ -425,7 +430,7 @@ class K8sApi {
             }
         };
 
-        const _kind = k8sKind(kind);
+        const _kind = normalizeKind(kind);
 
         if (!this._registeredKind(_kind)) {
             throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
@@ -475,7 +480,7 @@ class K8sApi {
             const kindList = k8sManifest(body);
             for (let i = 0; i < kindList.items.length; i++) {
                 kindList.items[i].apiVersion = kindList.apiVersion;
-                kindList.items[i].kind = k8sKind(kindList.items[i]?.constructor?.name || '');
+                kindList.items[i].kind = normalizeKind(kindList.items[i]?.constructor?.name || '');
             }
 
             return kindList;
@@ -484,7 +489,7 @@ class K8sApi {
 
     _listStrategy(kind, namespace) {
 
-        const _kind = k8sKind(kind);
+        const _kind = normalizeKind(kind);
 
         if (!this._registeredKind(_kind)) {
             throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
@@ -504,7 +509,7 @@ class K8sApi {
 
     _listKindThroughApiStrategy(api, kind, namespace) {
 
-        const _kind = k8sKind(kind);
+        const _kind = normalizeKind(kind);
 
         if (!this._registeredKind(_kind)) {
             throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
@@ -551,12 +556,12 @@ class K8sApi {
         }
 
         const api = this._clientApi(manifest.apiVersion);
-        return this._handleStrategyExecution.bind(this, [this._deleteKindThroughApiStrategy(api, k8sKind(manifest.kind), manifest)]);
+        return this._handleStrategyExecution.bind(this, [this._deleteKindThroughApiStrategy(api, normalizeKind(manifest.kind), manifest)]);
     }
 
     _deleteKindThroughApiStrategy(api, kind, manifest) {
 
-        const _kind = k8sKind(kind);
+        const _kind = normalizeKind(kind);
 
         if (!this._registeredKind(_kind)) {
             throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
@@ -593,7 +598,7 @@ class K8sApi {
     _configuredManifest(configuration) {
 
         if (!configuration.kind) {
-            configuration.kind = k8sKind(configuration.constructor.name);
+            configuration.kind = normalizeKind(configuration.constructor.name);
         }
 
         return k8sManifest(configuration);
