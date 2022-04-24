@@ -156,7 +156,7 @@ class K8sApi {
 
         const groupVersions = this._kindToGroupVersion[k8sKind(kind).toLowerCase()] || new Set();
 
-        if (groupVersions.length <= 0) {
+        if (groupVersions.size <= 0) {
             throw new ErrorNotFound(`The kind ${kind} didn't have any registered group versions. Are you sure you're using an accepted kind?`);
         }
 

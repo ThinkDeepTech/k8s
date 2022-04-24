@@ -741,6 +741,28 @@ describe('k8s-api', () => {
         })
     })
 
+    describe('_groupVersions', () => {
+
+        beforeEach(async () => {
+            await subject._initClientMappings(kubeConfig, apis);
+        })
+
+        it('should return a set', () => {
+            const actual = subject._groupVersions('Event');
+            expect(actual.constructor.name).to.equal('Set');
+        })
+
+        it('should throw an error if the kind does not map to a group', () => {
+            expect(() => subject._groupVersions('NonExistantKind')).to.throw(ErrorNotFound);
+        })
+
+        it('should return the registered groups for a given kind', () => {
+            const groups = subject._groupVersions('Event');
+            expect(groups).to.include('events.k8s.io/v1beta1');
+            expect(groups).to.include('v1');
+        })
+    })
+
     describe('_forEachApiGroup', () => {
 
         const resourceFunctionName = apiGroupResourceFunction;
