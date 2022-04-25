@@ -900,10 +900,14 @@ describe('k8s-api', () => {
 
     describe('createAll', () => {
       beforeEach(async () => {
-          await subject.init(kubeConfig, apis);
+        await subject.init(kubeConfig, apis);
       })
 
-      // TODO
+      it('should execute creation in the same order as the provided manifests', async () => {
+
+      })
+
+
     })
 
     describe('_creationStrategy', () => {

@@ -227,21 +227,23 @@ class K8sApi {
      * @returns K8s client objects or [] if the objects already exist.
      */
     async createAll(manifests) {
-        return (await Promise.all(manifests.map(async(manifest) => {
+
+        let targets = [];
+        for (const manifest of manifests) {
             try {
 
                 const received = await this._creationStrategy(manifest)();
 
-                return this._configuredManifest(received.response.body);
+                targets.push( this._configuredManifest(received.response.body) );
             } catch (e) {
 
                 if (!e?.response?.statusCode || e?.response?.statusCode !== 409) {
                     throw e;
                 }
-
-                return null;
             }
-        }))).filter((val) => !!val);
+        }
+
+        return targets;
     }
 
     _creationStrategy(manifest) {
