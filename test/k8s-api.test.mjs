@@ -709,7 +709,48 @@ describe('k8s-api', () => {
     })
 
     describe('exists', () => {
-        // TODO
+        beforeEach(async () => {
+            await subject.init(kubeConfig, apis);
+        })
+
+        it('should reject unknown kinds', async () => {
+            await expect(subject.exists('UnknownKind', 'unimportant', 'unimportant')).to.be.rejectedWith(ErrorNotFound);
+        })
+
+        it('should return true for existant objects', async () => {
+
+            const kind = 'Event';
+            const name = 'magical-event';
+            const namespace = 'default';
+            const readFunction = `readNamespaced${kind}`;
+
+            apiClient(k8s.CoreV1Api, apiClients)[readFunction].returns({
+              response: {
+                body: {
+                  apiVersion: 'v1',
+                  kind,
+                }
+              }
+            });
+
+            expect(await subject.exists(kind, name, namespace)).to.be.equal(true);
+        })
+
+        it('should return false for non-existant objects', async () => {
+
+          const kind = 'Event';
+          const name = 'magical-event';
+          const namespace = 'default';
+          const readFunction = `readNamespaced${kind}`;
+
+          apiClient(k8s.CoreV1Api, apiClients)[readFunction].returns(Promise.reject({
+            response: {
+              statusCode: 404
+            }
+          }));
+
+          expect(await subject.exists(kind, name, namespace)).to.be.equal(false);
+      })
     })
 
     describe('read', () => {
@@ -754,53 +795,53 @@ describe('k8s-api', () => {
 
         it('should convert read manifests to k8s client objects', async () => {
 
-          const kind = 'Event';
-          const name = 'magical-event';
-          const namespace = 'default';
-          const readFunction = `readNamespaced${kind}`;
+            const kind = 'Event';
+            const name = 'magical-event';
+            const namespace = 'default';
+            const readFunction = `readNamespaced${kind}`;
 
-          apiClient(k8s.CoreV1Api, apiClients)[readFunction].returns({
-            response: {
-              body: {
-                apiVersion: 'v1',
-                kind,
+            apiClient(k8s.CoreV1Api, apiClients)[readFunction].returns({
+              response: {
+                body: {
+                  apiVersion: 'v1',
+                  kind,
+                }
               }
-            }
-          });
-          apiClient(k8s.EventsV1Api, apiClients)[readFunction].returns({
-            response: {
-              body: {
-                apiVersion: 'events.k8s.io/v1',
-                kind,
+            });
+            apiClient(k8s.EventsV1Api, apiClients)[readFunction].returns({
+              response: {
+                body: {
+                  apiVersion: 'events.k8s.io/v1',
+                  kind,
+                }
               }
-            }
-          });
+            });
 
-          const actual = await subject.read(kind, name, namespace);
+            const actual = await subject.read(kind, name, namespace);
 
-          expect(actual.constructor.name).to.equal('EventsV1Event');
-      })
+            expect(actual.constructor.name).to.equal('EventsV1Event');
+        })
 
-      it('should throw an error if nothing is found', async () => {
+        it('should throw an error if nothing is found', async () => {
 
-        const kind = 'Event';
-        const name = 'magical-event';
-        const namespace = 'default';
-        const readFunction = `readNamespaced${kind}`;
+            const kind = 'Event';
+            const name = 'magical-event';
+            const namespace = 'default';
+            const readFunction = `readNamespaced${kind}`;
 
-        apiClient(k8s.CoreV1Api, apiClients)[readFunction].returns(Promise.reject({
-          response: {
-            statusCode: 404
-          }
-        }));
-        apiClient(k8s.EventsV1Api, apiClients)[readFunction].returns( Promise.reject({
-          response: {
-            statusCode: 404
-          }
-        }));
+            apiClient(k8s.CoreV1Api, apiClients)[readFunction].returns(Promise.reject({
+              response: {
+                statusCode: 404
+              }
+            }));
+            apiClient(k8s.EventsV1Api, apiClients)[readFunction].returns( Promise.reject({
+              response: {
+                statusCode: 404
+              }
+            }));
 
-        await expect(subject.read(kind, name, namespace)).to.be.rejectedWith(ErrorNotFound);
-    })
+            await expect(subject.read(kind, name, namespace)).to.be.rejectedWith(ErrorNotFound);
+        })
 
     })
 
