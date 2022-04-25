@@ -1,5 +1,5 @@
 import k8s from '@kubernetes/client-node';
-import { k8sManifest } from '@thinkdeep/k8s-manifest';
+import { k8sManifest, objectify } from '@thinkdeep/k8s-manifest';
 import chai from 'chai';
 import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
@@ -537,25 +537,25 @@ describe('k8s-api', () => {
 
         apiClient(k8s.AdmissionregistrationApi, apiClients)[apiGroupResourceFunction].returns(Promise.resolve({
             response: {
-                body: apiGroup(k8s.AdmissionregistrationApi)
+                body: objectify(apiGroup(k8s.AdmissionregistrationApi))
             }
         }));
 
         apiClient(k8s.EventsApi, apiClients)[apiGroupResourceFunction].returns(Promise.resolve({
             response: {
-                body: apiGroup(k8s.EventsApi)
+                body: objectify(apiGroup(k8s.EventsApi))
             }
         }));
 
         apiClient(k8s.EventsV1Api, apiClients)[apiResourcesFunction].returns(Promise.resolve({
             response: {
-                body: resourceList(k8s.EventsV1Api)
+                body: objectify(resourceList(k8s.EventsV1Api))
             }
         }));
 
         apiClient(k8s.CoreV1Api, apiClients)[apiResourcesFunction].returns(Promise.resolve({
             response: {
-                body: resourceList(k8s.CoreV1Api)
+                body: objectify(resourceList(k8s.CoreV1Api))
             }
         }));
 
@@ -713,17 +713,110 @@ describe('k8s-api', () => {
     })
 
     describe('read', () => {
-        // TODO
+
+        beforeEach(async () => {
+            await subject.init(kubeConfig, apis);
+        })
+
+        it('should reject unknown kinds', async () => {
+            await expect(subject.read('UnknownKind', 'unimportant', 'unimportant')).to.be.rejectedWith(ErrorNotFound);
+        })
+
+        it('should broadcast read data from the apis', async () => {
+
+            const kind = 'Event';
+            const name = 'magical-event';
+            const namespace = 'default';
+            const readFunction = `readNamespaced${kind}`;
+
+            apiClient(k8s.CoreV1Api, apiClients)[readFunction].returns({
+              response: {
+                body: {
+                  apiVersion: 'v1',
+                  kind,
+                }
+              }
+            });
+            apiClient(k8s.EventsV1Api, apiClients)[readFunction].returns({
+              response: {
+                body: {
+                  apiVersion: 'v1',
+                  kind,
+                }
+              }
+            });
+
+            await subject.read(kind, name, namespace);
+
+            expect(apiClient(k8s.CoreV1Api, apiClients)[readFunction]).to.have.been.calledOnce;
+            expect(apiClient(k8s.EventsV1Api, apiClients)[readFunction]).to.have.been.calledOnce;
+        })
+
+        it('should convert read manifests to k8s client objects', async () => {
+
+          const kind = 'Event';
+          const name = 'magical-event';
+          const namespace = 'default';
+          const readFunction = `readNamespaced${kind}`;
+
+          apiClient(k8s.CoreV1Api, apiClients)[readFunction].returns({
+            response: {
+              body: {
+                apiVersion: 'v1',
+                kind,
+              }
+            }
+          });
+          apiClient(k8s.EventsV1Api, apiClients)[readFunction].returns({
+            response: {
+              body: {
+                apiVersion: 'events.k8s.io/v1',
+                kind,
+              }
+            }
+          });
+
+          const actual = await subject.read(kind, name, namespace);
+
+          expect(actual.constructor.name).to.equal('EventsV1Event');
+      })
+
+      it('should throw an error if nothing is found', async () => {
+
+        const kind = 'Event';
+        const name = 'magical-event';
+        const namespace = 'default';
+        const readFunction = `readNamespaced${kind}`;
+
+        apiClient(k8s.CoreV1Api, apiClients)[readFunction].returns(Promise.reject({
+          response: {
+            statusCode: 404
+          }
+        }));
+        apiClient(k8s.EventsV1Api, apiClients)[readFunction].returns( Promise.reject({
+          response: {
+            statusCode: 404
+          }
+        }));
+
+        await expect(subject.read(kind, name, namespace)).to.be.rejectedWith(ErrorNotFound);
     })
 
-    describe('_readStrategy', () => {
+    })
+
+    describe('_broadcastReadStrategy', () => {
 
         beforeEach(async () => {
             await subject.init(kubeConfig, apis);
         })
 
         it('should reject unknown kinds', () => {
-            expect(() => subject._readStrategy('UnknownKind', 'unimportant', 'unimportant')).to.throw(ErrorNotFound);
+            expect(() => subject._broadcastReadStrategy('UnknownKind', 'unimportant', 'unimportant')).to.throw(ErrorNotFound);
+        })
+
+        it('should rely on strategy handler to execute strategies', () => {
+            const strategy = subject._broadcastReadStrategy('Event', 'somename', 'somenamespace');
+            expect(strategy.name).to.include('_handleStrategyExecution');
         })
     })
 

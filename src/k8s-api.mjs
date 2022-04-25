@@ -297,29 +297,37 @@ class K8sApi {
      *
      * NOTE: If the object doesn't exist on the cluster a ErrorNotFound exception will be thrown.
      *
-     * @param {String} kind The k8s kind (i.e, CronJob).
-     * @param {String} name The name of the object as seen in the k8s metadata name field.
-     * @param {String} namespace The k8s object's namespace.
+     * @param {String} kind K8s kind.
+     * @param {String} name Name of the object as seen in the metadata.name field.
+     * @param {String} [namespace = DEFAULT_NAMESPACE] Namespace of the object as seen in the metadata.namespace field.
      *
      * @returns A kubernetes javascript client representation of the object on the cluster.
      */
-    async read(kind, name, namespace) {
+    async read(kind, name, namespace = DEFAULT_NAMESPACE) {
 
         if (!this._registeredKind(kind)) {
             throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
         }
 
-        const results = await this._readStrategy( normalizeKind(kind), name, namespace )();
+        const results = await this._broadcastReadStrategy( normalizeKind(kind), name, namespace )();
 
-        if (results.length === 0) {
-            const namespaceMessage = !!namespace ? ` in namespace ${namespace}` : ``;
-            throw new ErrorNotFound(`The resource of kind ${kind} with name ${name}${namespaceMessage} wasn't found.`);
+        if (results.length <= 0) {
+            const namespaceMessage = !!namespace ? `in namespace ${namespace}` : ``;
+            throw new ErrorNotFound(`The resource of kind ${kind} with name ${name} ${namespaceMessage} wasn't found.`);
         }
 
         return results.map((received) => this._configuredManifest(received.response.body))[0];
     }
 
-    _readStrategy(kind, name, namespace) {
+    /**
+     * Get the k8s javascript client strategy for reading cluster objects.
+     *
+     * @param {String} kind K8s kind.
+     * @param {String} name Name of the object as seen in the metadata.name field.
+     * @param {String} [namespace = DEFAULT_NAMESPACE] Namespace of the object as seen in the metadata.namespace field.
+     * @returns Read function broadcasting to all kind apis.
+     */
+    _broadcastReadStrategy(kind, name, namespace = DEFAULT_NAMESPACE) {
 
         const _kind = normalizeKind(kind);
 
