@@ -253,15 +253,16 @@ class K8sApi {
         }
 
         const api = this._clientApi(manifest.apiVersion);
-        if (api[`createNamespaced${kind}`]) {
-
-            return api[`createNamespaced${kind}`].bind(api, manifest.metadata.namespace, manifest);
-        } else if (api[`create${kind}`]) {
+        if (api[`create${kind}`]) {
 
             return api[`create${kind}`].bind(api, manifest);
+        } else if (api[`createNamespaced${kind}`]) {
+
+            return api[`createNamespaced${kind}`].bind(api, manifest.metadata.namespace || DEFAULT_NAMESPACE, manifest);
         } else {
+
             throw new Error(`
-                The creation function for kind ${kind} wasn't found. This may be because it hasn't yet been implemented. Please submit an issue on the github repo relating to this.
+                The creation function for kind ${kind} wasn't found. This may be because it has an incorrect api version or that it hasn't yet been implemented yet. Please double-check the api version you used in the manifest and if the issue persists submit an issue on the github repo.
             `)
         }
     }

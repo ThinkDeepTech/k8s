@@ -898,6 +898,57 @@ describe('k8s-api', () => {
         })
     })
 
+    describe('createAll', () => {
+      beforeEach(async () => {
+          await subject.init(kubeConfig, apis);
+      })
+
+      // TODO
+    })
+
+    describe('_creationStrategy', () => {
+
+      beforeEach(async () => {
+        await subject.init(kubeConfig, apis);
+      })
+
+      it('should reject unknown kinds', () => {
+        const manifest = new k8s.V1CronJob();
+        manifest.apiVersion = 'v1';
+        manifest.kind = 'UnknownKind';
+        expect(() => subject._creationStrategy(manifest)).to.throw(ErrorNotFound);
+      })
+
+      it('should return namespaced function for namespaced kinds', () => {
+        const manifest = k8sManifest(`
+          apiVersion: v1
+          kind: Event
+          metadata:
+            name: 'some-event'
+        `);
+
+        const actual = subject._creationStrategy(manifest);
+
+        expect(actual.name).to.include('createNamespaced');
+      })
+
+      it('should return non-namespaced function for non-namespaced manifests', () => {
+        const manifest = k8sManifest(`
+          apiVersion: v1
+          kind: Event
+          metadata:
+            name: 'some-event'
+        `);
+        const nonNamespacedFunctionName = `create${manifest.kind}`;
+
+        apiClient(k8s.CoreV1Api, apiClients)[nonNamespacedFunctionName] = sinon.stub();
+
+        const actual = subject._creationStrategy(manifest);
+
+        expect(actual.name).not.to.include('Namespaced');
+      })
+    })
+
     describe('_registeredKind', () => {
         beforeEach(async () => {
             await subject.init(kubeConfig, apis);
