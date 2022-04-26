@@ -1,5 +1,5 @@
 import k8s from '@kubernetes/client-node';
-import { k8sManifest } from '@thinkdeep/k8s-manifest';
+import { k8sManifest, stringify } from '@thinkdeep/k8s-manifest';
 import {ErrorNotFound} from './error/error-not-found.mjs'
 import { normalizeKind } from './normalize-kind.mjs';
 
@@ -232,9 +232,13 @@ class K8sApi {
         for (const manifest of manifests) {
             try {
 
-                const received = await this._creationStrategy(manifest)();
+                console.log(`Current manifest:\n\n${stringify(manifest)}`);
 
-                targets.push( this._configuredManifest(received.response.body) );
+                const strategy = this._creationStrategy(manifest);
+
+                const received = await strategy();
+
+                targets.push( this._configuredManifest( k8sManifest(received.response.body)) );
             } catch (e) {
 
                 if (!e?.response?.statusCode || e?.response?.statusCode !== 409) {
@@ -319,7 +323,7 @@ class K8sApi {
             throw new ErrorNotFound(`The resource of kind ${kind} with name ${name} ${namespaceMessage} wasn't found.`);
         }
 
-        return results.map((received) => this._configuredManifest(received.response.body))[0];
+        return results.map((received) => this._configuredManifest( k8sManifest(received.response.body)))[0];
     }
 
     /**
@@ -403,7 +407,7 @@ class K8sApi {
 
                 const received = responses[0];
 
-                return this._configuredManifest(received.response.body);
+                return this._configuredManifest( k8sManifest(received.response.body) );
         }));
     }
 
@@ -612,7 +616,7 @@ class K8sApi {
             configuration.kind = normalizeKind(configuration.constructor.name);
         }
 
-        return k8sManifest(configuration);
+        return configuration;
     }
 };
 

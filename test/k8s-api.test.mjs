@@ -1000,7 +1000,7 @@ describe('k8s-api', () => {
         await subject.init(kubeConfig, apis);
       })
 
-      it('should execute creation in the same order as the provided manifests', async () => {
+      it.only('should execute creation in the same order as the provided manifests', async () => {
         const manifestCronJob = k8sManifest(`
           apiVersion: batch/v1
           kind: CronJob
@@ -1015,36 +1015,45 @@ describe('k8s-api', () => {
             namespace: "default"
         `);
 
-        const manifestPod = k8sManifest(`
+        const manifestService = k8sManifest(`
           apiVersion: v1
-          kind: Pod
+          kind: Service
           metadata:
             namespace: "default"
         `);
 
-        apiClient(k8s.CoreV1Api, apiClients)['createNamespacedCronJob'] = sinon.stub().withArgs(manifestCronJob).returns({
+        const batchClient = apiClient(k8s.BatchV1Api, apiClients);
+        const batchCreationFunction = 'createNamespacedCronJob';
+        batchClient[batchCreationFunction].bind = sinon.stub().returns(batchClient[batchCreationFunction]);
+        batchClient[batchCreationFunction].withArgs([batchClient, manifestCronJob.metadata.namespace, manifestCronJob]).returns(Promise.resolve({
           response: {
-            body: manifestCronJob
+            body: objectify(manifestCronJob)
           }
-        });
+        }));
 
-        apiClient(k8s.CoreV1Api, apiClients)['createNamespacedDeployment'] = sinon.stub().withArgs(manifestDeployment).returns({
+        const appsClient = apiClient(k8s.AppsV1Api, apiClients);
+        const appsCreateFunction = 'createNamespacedDeployment';
+        appsClient[appsCreateFunction].bind = sinon.stub().returns(appsClient[appsCreateFunction]);
+        appsClient[appsCreateFunction].withArgs([appsClient, manifestDeployment]).returns(Promise.resolve({
           response: {
-            body: manifestDeployment
+            body: objectify(manifestDeployment)
           }
-        });
+        }));
 
-        apiClient(k8s.CoreV1Api, apiClients)['createNamespacedPod'] = sinon.stub().withArgs(manifestPod).returns({
+        const coreClient = apiClient(k8s.CoreV1Api, apiClients);
+        const coreCreateFunction = 'createNamespacedService';
+        coreClient[coreCreateFunction].bind = sinon.stub().returns(coreClient[coreCreateFunction]);
+        coreClient[coreCreateFunction].withArgs([coreClient, manifestService]).returns(Promise.resolve({
           response: {
-            body: manifestPod
+            body: objectify(manifestService)
           }
-        });
+        }));
 
-        const actuals = await subject.createAll([manifestCronJob, manifestDeployment, manifestPod]);
+        const actuals = await subject.createAll([manifestCronJob, manifestDeployment, manifestService]);
 
         expect(actuals[0].constructor.name).to.include('CronJob');
         expect(actuals[1].constructor.name).to.include('Deployment');
-        expect(actuals[2].constructor.name).to.include('Pod');
+        expect(actuals[2].constructor.name).to.include('Service');
       })
     })
 
