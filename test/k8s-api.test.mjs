@@ -1,6 +1,6 @@
 import k8s from '@kubernetes/client-node';
 import { k8sManifest, objectify } from '@thinkdeep/k8s-manifest';
-import chai from 'chai';
+import chai, { version } from 'chai';
 import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
 import chaiAsPromised from 'chai-as-promised';
@@ -11,14 +11,6 @@ chai.use(chaiAsPromised);
 import {K8sApi} from '../src/k8s-api.mjs';
 import {normalizeKind} from '../src/normalize-kind.mjs';
 import {ErrorNotFound} from '../src/error/error-not-found.mjs';
-
-const MOCK_RESOURCE_LIST_BATCH = 'MOCK_RESOURCE_LIST_BATCH';
-const MOCK_RESOURCE_LIST_APPS = 'MOCK_RESOURCE_LIST_APPS';
-const MOCK_RESOURCE_LIST_CORE = 'MOCK_RESOURCE_LIST_CORE';
-
-const MOCK_API_GROUP_BATCH = 'MOCK_API_GROUP_BATCH';
-const MOCK_API_GROUP_APPS = 'MOCK_API_GROUP_APPS';
-const MOCK_API_GROUP_CORE = 'MOCK_API_GROUP_CORE';
 
 describe('k8s-api', () => {
 
@@ -53,6 +45,12 @@ describe('k8s-api', () => {
                 kind: APIResourceList
                 groupVersion: v1
                 resources:
+                  - name: pods
+                    singularName: ''
+                    namespaced: true
+                    kind: Pod
+                    verbs:
+                      - create
                   - name: bindings
                     singularName: ''
                     namespaced: true
@@ -469,7 +467,7 @@ describe('k8s-api', () => {
                       - update
                 apiVersion: v1
             `),
-            [MOCK_RESOURCE_LIST_BATCH]: k8sManifest(`
+            [`${k8s.BatchV1Api.name}`]: k8sManifest(`
               kind: APIResourceList
               groupVersion: batch/v1
               resources:
@@ -480,7 +478,7 @@ describe('k8s-api', () => {
                   verbs:
                     - create
             `),
-            [MOCK_RESOURCE_LIST_APPS]: k8sManifest(`
+            [`${k8s.AppsV1Api.name}`]: k8sManifest(`
               kind: APIResourceList
               groupVersion: apps/v1
               resources:
@@ -488,17 +486,6 @@ describe('k8s-api', () => {
                   singularName: ''
                   namespaced: true
                   kind: Deployment
-                  verbs:
-                    - create
-            `),
-            [MOCK_RESOURCE_LIST_CORE]: k8sManifest(`
-              kind: APIResourceList
-              groupVersion: v1
-              resources:
-                - name: pods
-                  singularName: ''
-                  namespaced: true
-                  kind: Pod
                   verbs:
                     - create
             `)
@@ -538,7 +525,7 @@ describe('k8s-api', () => {
                   groupVersion: events.k8s.io/v1
                   version: v1
             `),
-            [`${MOCK_API_GROUP_BATCH}`]: k8sManifest(`
+            [`${k8s.BatchApi.name}`]: k8sManifest(`
                 kind: APIGroup
                 apiVersion: v1
                 name: batch
@@ -549,7 +536,7 @@ describe('k8s-api', () => {
                   groupVersion: batch/v1
                   version: v1
             `),
-            [`${MOCK_API_GROUP_APPS}`]: k8sManifest(`
+            [`${k8s.AppsApi.name}`]: k8sManifest(`
                 kind: APIGroup
                 apiVersion: v1
                 name: apps
@@ -558,17 +545,6 @@ describe('k8s-api', () => {
                     version: v1
                 preferredVersion:
                   groupVersion: apps/v1
-                  version: v1
-            `),
-            [`${MOCK_API_GROUP_CORE}`]: k8sManifest(`
-                kind: APIGroup
-                apiVersion: v1
-                name: core
-                versions:
-                  - groupVersion: v1
-                    version: v1
-                preferredVersion:
-                  groupVersion: v1
                   version: v1
             `)
         };
@@ -593,21 +569,41 @@ describe('k8s-api', () => {
     };
 
     let apis;
+    let baseApis;
+    let versionedApis;
     let apiClients;
     let kubeConfig;
     let subject;
     beforeEach(() => {
 
-        apis = [k8s.AdmissionregistrationApi, k8s.EventsApi, k8s.EventsV1Api, k8s.CoreV1Api];
+        baseApis = [
+          k8s.AdmissionregistrationApi,
+          k8s.AppsApi,
+          k8s.BatchApi,
+          k8s.EventsApi
+        ];
+
+        versionedApis = [
+          k8s.AppsV1Api,
+          k8s.BatchV1Api,
+          k8s.CoreV1Api,
+          k8s.EventsV1Api
+        ];
+
+        apis = [ ...baseApis, ...versionedApis ];
 
         apiClients = initApiClients(apis);
 
         kubeConfig = sinon.createStubInstance(k8s.KubeConfig);
 
         kubeConfig.makeApiClient.withArgs(k8s.AdmissionregistrationApi).returns(apiClient(k8s.AdmissionregistrationApi, apiClients));
-        kubeConfig.makeApiClient.withArgs(k8s.EventsApi).returns(apiClient(k8s.EventsApi, apiClients));
-        kubeConfig.makeApiClient.withArgs(k8s.EventsV1Api).returns(apiClient(k8s.EventsV1Api, apiClients));
+        kubeConfig.makeApiClient.withArgs(k8s.AppsApi).returns(apiClient(k8s.AppsApi, apiClients));
+        kubeConfig.makeApiClient.withArgs(k8s.AppsV1Api).returns(apiClient(k8s.AppsV1Api, apiClients));
+        kubeConfig.makeApiClient.withArgs(k8s.BatchApi).returns(apiClient(k8s.BatchApi, apiClients));
+        kubeConfig.makeApiClient.withArgs(k8s.BatchV1Api).returns(apiClient(k8s.BatchV1Api, apiClients));
         kubeConfig.makeApiClient.withArgs(k8s.CoreV1Api).returns(apiClient(k8s.CoreV1Api, apiClients));
+        kubeConfig.makeApiClient.withArgs(k8s.EventsApi).returns(apiClient(k8s.EventsApi, apiClients));
+        kubeConfig.makeApiClient.withArgs(k8s.EventsV1Api).returns(apiClient(k8s.EventsV1Api, apiClients))
 
         apiClient(k8s.AdmissionregistrationApi, apiClients)[apiGroupResourceFunction].returns(Promise.resolve({
             response: {
@@ -618,6 +614,30 @@ describe('k8s-api', () => {
         apiClient(k8s.EventsApi, apiClients)[apiGroupResourceFunction].returns(Promise.resolve({
             response: {
                 body: objectify(apiGroup(k8s.EventsApi))
+            }
+        }));
+
+        apiClient(k8s.BatchApi, apiClients)[apiGroupResourceFunction].returns(Promise.resolve({
+            response: {
+                body: objectify(apiGroup(k8s.BatchApi))
+            }
+        }));
+
+        apiClient(k8s.AppsApi, apiClients)[apiGroupResourceFunction].returns(Promise.resolve({
+            response: {
+                body: objectify(apiGroup(k8s.AppsApi))
+            }
+        }));
+
+        apiClient(k8s.AppsV1Api, apiClients)[apiResourcesFunction].returns(Promise.resolve({
+            response: {
+                body: objectify(resourceList(k8s.AppsV1Api))
+            }
+        }));
+
+        apiClient(k8s.BatchV1Api, apiClients)[apiResourcesFunction].returns(Promise.resolve({
+            response: {
+                body: objectify(resourceList(k8s.BatchV1Api))
             }
         }));
 
@@ -721,12 +741,14 @@ describe('k8s-api', () => {
 
             const mappedApis = subject._kindToApiClients[resourceList(k8s.EventsV1Api).resources[0].kind.toLowerCase()];
             expect(Array.isArray(mappedApis)).to.equal(true);
-            expect(mappedApis[0]).to.equal(apiClient(k8s.EventsV1Api, apiClients));
+            expect(mappedApis).to.include(apiClient(k8s.EventsV1Api, apiClients));
         })
 
         it('should provide a mapping from kind to group', async () => {
 
             await subject._initClientMappings(kubeConfig, apis);
+
+          // TODO
 
             const resList = resourceLists();
             for (const [_, resourceList] of Object.entries(resList)) {
@@ -877,14 +899,11 @@ describe('k8s-api', () => {
             const namespace = 'default';
             const readFunction = `readNamespaced${kind}`;
 
-            apiClient(k8s.CoreV1Api, apiClients)[readFunction].returns({
+            apiClient(k8s.CoreV1Api, apiClients)[readFunction].returns(Promise.reject({
               response: {
-                body: {
-                  apiVersion: 'v1',
-                  kind,
-                }
+                statusCode: 404
               }
-            });
+            }));
             apiClient(k8s.EventsV1Api, apiClients)[readFunction].returns({
               response: {
                 body: {
@@ -1160,7 +1179,7 @@ describe('k8s-api', () => {
 
             expect(apiClient(k8s.AdmissionregistrationApi, apiClients)[resourceFunctionName]).to.have.been.calledOnce;
             expect(apiClient(k8s.EventsApi, apiClients)[resourceFunctionName]).to.have.been.calledOnce;
-            expect(callback).to.have.callCount(2);
+            expect(callback).to.have.callCount(baseApis.length);
         })
     })
 
@@ -1214,7 +1233,7 @@ describe('k8s-api', () => {
 
             await subject._forEachApi(kubeConfig, resourceFunctionName, callback, apis);
 
-            expect(callback).to.have.callCount(2);
+            expect(callback).to.have.callCount(baseApis.length);
         })
 
         it('should ignore cases where the resource function is not found', async () => {
@@ -1223,7 +1242,12 @@ describe('k8s-api', () => {
 
             await subject._forEachApi(kubeConfig, resourceFunctionName, callback, apis);
 
-            expect(callback).to.have.callCount(2); // The final call is ignored.
+            /**
+             * Note: Whether versioned apis or base apis are used here depends on which resource function
+             * is being used. Base apis have the api-group-related functionality whereas versioned haveee
+             * the resource-list-related functionality.
+             */
+            expect(callback).to.have.callCount(baseApis.length);
         })
 
         it('should throw if a non-404 error occurs', async () => {
