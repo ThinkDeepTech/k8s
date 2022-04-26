@@ -12,6 +12,14 @@ import {K8sApi} from '../src/k8s-api.mjs';
 import {normalizeKind} from '../src/normalize-kind.mjs';
 import {ErrorNotFound} from '../src/error/error-not-found.mjs';
 
+const MOCK_RESOURCE_LIST_BATCH = 'MOCK_RESOURCE_LIST_BATCH';
+const MOCK_RESOURCE_LIST_APPS = 'MOCK_RESOURCE_LIST_APPS';
+const MOCK_RESOURCE_LIST_CORE = 'MOCK_RESOURCE_LIST_CORE';
+
+const MOCK_API_GROUP_BATCH = 'MOCK_API_GROUP_BATCH';
+const MOCK_API_GROUP_APPS = 'MOCK_API_GROUP_APPS';
+const MOCK_API_GROUP_CORE = 'MOCK_API_GROUP_CORE';
+
 describe('k8s-api', () => {
 
     const apiGroupResourceFunction = 'getAPIGroup';
@@ -460,6 +468,39 @@ describe('k8s-api', () => {
                       - patch
                       - update
                 apiVersion: v1
+            `),
+            [MOCK_RESOURCE_LIST_BATCH]: k8sManifest(`
+              kind: APIResourceList
+              groupVersion: batch/v1
+              resources:
+                - name: cronjobs
+                  singularName: ''
+                  namespaced: true
+                  kind: CronJob
+                  verbs:
+                    - create
+            `),
+            [MOCK_RESOURCE_LIST_APPS]: k8sManifest(`
+              kind: APIResourceList
+              groupVersion: apps/v1
+              resources:
+                - name: deployments
+                  singularName: ''
+                  namespaced: true
+                  kind: Deployment
+                  verbs:
+                    - create
+            `),
+            [MOCK_RESOURCE_LIST_CORE]: k8sManifest(`
+              kind: APIResourceList
+              groupVersion: v1
+              resources:
+                - name: pods
+                  singularName: ''
+                  namespaced: true
+                  kind: Pod
+                  verbs:
+                    - create
             `)
         };
     }
@@ -495,6 +536,39 @@ describe('k8s-api', () => {
                     version: v1beta1
                 preferredVersion:
                   groupVersion: events.k8s.io/v1
+                  version: v1
+            `),
+            [`${MOCK_API_GROUP_BATCH}`]: k8sManifest(`
+                kind: APIGroup
+                apiVersion: v1
+                name: batch
+                versions:
+                  - groupVersion: batch/v1
+                    version: v1
+                preferredVersion:
+                  groupVersion: batch/v1
+                  version: v1
+            `),
+            [`${MOCK_API_GROUP_APPS}`]: k8sManifest(`
+                kind: APIGroup
+                apiVersion: v1
+                name: apps
+                versions:
+                  - groupVersion: apps/v1
+                    version: v1
+                preferredVersion:
+                  groupVersion: apps/v1
+                  version: v1
+            `),
+            [`${MOCK_API_GROUP_CORE}`]: k8sManifest(`
+                kind: APIGroup
+                apiVersion: v1
+                name: core
+                versions:
+                  - groupVersion: v1
+                    version: v1
+                preferredVersion:
+                  groupVersion: v1
                   version: v1
             `)
         };
@@ -902,15 +976,61 @@ describe('k8s-api', () => {
     })
 
     describe('createAll', () => {
+
       beforeEach(async () => {
         await subject.init(kubeConfig, apis);
       })
 
       it('should execute creation in the same order as the provided manifests', async () => {
+<<<<<<< HEAD
         // TODO:
+=======
+        const manifestCronJob = k8sManifest(`
+          apiVersion: batch/v1
+          kind: CronJob
+          metadata:
+            namespace: "default"
+        `);
+
+        const manifestDeployment = k8sManifest(`
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            namespace: "default"
+        `);
+
+        const manifestPod = k8sManifest(`
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            namespace: "default"
+        `);
+
+        apiClient(k8s.CoreV1Api, apiClients)['createNamespacedCronJob'] = sinon.stub().withArgs(manifestCronJob).returns({
+          response: {
+            body: manifestCronJob
+          }
+        });
+
+        apiClient(k8s.CoreV1Api, apiClients)['createNamespacedDeployment'] = sinon.stub().withArgs(manifestDeployment).returns({
+          response: {
+            body: manifestDeployment
+          }
+        });
+
+        apiClient(k8s.CoreV1Api, apiClients)['createNamespacedPod'] = sinon.stub().withArgs(manifestPod).returns({
+          response: {
+            body: manifestPod
+          }
+        });
+
+        const actuals = await subject.createAll([manifestCronJob, manifestDeployment, manifestPod]);
+
+        expect(actuals[0].constructor.name).to.include('CronJob');
+        expect(actuals[1].constructor.name).to.include('Deployment');
+        expect(actuals[2].constructor.name).to.include('Pod');
+>>>>>>> 6973be1964f0eae837a67cd2854eb73824cc331d
       })
-
-
     })
 
     describe('_creationStrategy', () => {
