@@ -668,11 +668,14 @@ describe('k8s-api', () => {
 
             await subject._initClientMappings(kubeConfig, apis);
 
-            for (const [_, apiGroup] of Object.entries(apiGroups())) {
+            const groups = apiGroups();
+            for (const [_, apiGroup] of Object.entries(groups)) {
                 for (const entry of apiGroup.versions) {
                     expect(subject._groupVersionToPreferredVersion[entry.groupVersion]).to.equal(apiGroup.preferredVersion.groupVersion);
                 }
             }
+
+            expect(Object.keys(groups).length).to.be.greaterThan(0);
         })
 
         it('should setup the initial preferred version to be the group version after which it will be overwritten by the preferred group version', async () => {
@@ -904,7 +907,7 @@ describe('k8s-api', () => {
       })
 
       it('should execute creation in the same order as the provided manifests', async () => {
-
+        // TODO:
       })
 
 
