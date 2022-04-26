@@ -982,9 +982,6 @@ describe('k8s-api', () => {
       })
 
       it('should execute creation in the same order as the provided manifests', async () => {
-<<<<<<< HEAD
-        // TODO:
-=======
         const manifestCronJob = k8sManifest(`
           apiVersion: batch/v1
           kind: CronJob
@@ -1029,7 +1026,6 @@ describe('k8s-api', () => {
         expect(actuals[0].constructor.name).to.include('CronJob');
         expect(actuals[1].constructor.name).to.include('Deployment');
         expect(actuals[2].constructor.name).to.include('Pod');
->>>>>>> 6973be1964f0eae837a67cd2854eb73824cc331d
       })
     })
 
