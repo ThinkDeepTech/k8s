@@ -396,7 +396,7 @@ class K8sApi {
     patchAll(manifests) {
         return Promise.all(manifests.map(async(manifest) => {
 
-                const responses = await this._patchStrategy(manifest)();
+                const responses = await this._broadcastPatchStrategy(manifest)();
 
                 if (responses.length === 0) {
                     const namespaceMessage = !!manifest.metadata.namespace ?  `in namespace ${manifest.metadata.namespace}` : '';
@@ -409,7 +409,7 @@ class K8sApi {
         }));
     }
 
-    _patchStrategy(manifest) {
+    _broadcastPatchStrategy(manifest) {
 
         const kind = normalizeKind(manifest.kind);
 
@@ -421,13 +421,13 @@ class K8sApi {
 
         let strategies = [];
         for (const api of apis) {
-            strategies.push(this._patchKindThroughApiStrategy(api, kind, manifest));
+            strategies.push(this._patchClusterObjectStrategy(api, kind, manifest));
         }
 
         return this._handleStrategyExecution.bind(this, strategies);
     }
 
-    _patchKindThroughApiStrategy(api, kind, manifest) {
+    _patchClusterObjectStrategy(api, kind, manifest) {
 
         const pretty = undefined;
 

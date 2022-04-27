@@ -1144,11 +1144,103 @@ describe('k8s-api', () => {
       })
     })
 
-    describe('patchAll', () => {
-        it('should occur in the same order as the manifests provided', async () => {
-          // TODO
-        })
+    describe.only('patchAll', () => {
+      const manifestCronJob = k8sManifest(`
+        apiVersion: batch/v1
+        kind: CronJob
+        metadata:
+          namespace: "default"
+      `);
 
+      const manifestDeployment = k8sManifest(`
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          namespace: "default"
+      `);
+
+      const manifestService = k8sManifest(`
+        apiVersion: v1
+        kind: Service
+        metadata:
+          namespace: "default"
+      `);
+
+      let batchClient;
+      let batchFunctionName;
+      let boundBatchFunction;
+      let appsClient;
+      let appsFunctionName;
+      let boundAppsFunction;
+      let coreClient;
+      let coreFunctionName;
+      let boundCoreFunction;
+      beforeEach(async () => {
+
+        batchClient = apiClient(k8s.BatchV1Api, apiClients);
+        batchFunctionName = 'patchNamespacedCronJob';
+        boundBatchFunction = sinon.stub();
+        boundBatchFunction.returns(Promise.resolve({
+          response: {
+            body: objectify(manifestCronJob)
+          }
+        }));
+        batchClient[batchFunctionName].bind = sinon.stub().returns(boundBatchFunction);
+
+        appsClient = apiClient(k8s.AppsV1Api, apiClients);
+        appsFunctionName = 'patchNamespacedDeployment';
+        boundAppsFunction = sinon.stub();
+        boundAppsFunction.returns(Promise.resolve({
+          response: {
+            body: objectify(manifestDeployment)
+          }
+        }));
+        appsClient[appsFunctionName].bind = sinon.stub().returns(boundAppsFunction);
+
+        coreClient = apiClient(k8s.CoreV1Api, apiClients);
+        coreFunctionName = 'patchNamespacedService';
+        boundCoreFunction = sinon.stub();
+        boundCoreFunction.returns(Promise.resolve({
+          response: {
+            body: objectify(manifestService)
+          }
+        }));
+        coreClient[coreFunctionName].bind = sinon.stub().returns(boundCoreFunction);
+
+        await subject.init(kubeConfig, apis);
+      })
+
+      it('should execute in the same order as the provided manifests', async () => {
+        const actuals = await subject.patchAll([manifestCronJob, manifestDeployment, manifestService]);
+
+        expect(actuals[0].constructor.name).to.include('CronJob');
+        expect(actuals[1].constructor.name).to.include('Deployment');
+        expect(actuals[2].constructor.name).to.include('Service');
+      })
+
+      it('should throw an error on failure with no status code', async () => {
+
+        boundBatchFunction.returns(Promise.reject());
+
+        await expect(subject.patchAll([manifestCronJob, manifestDeployment, manifestService])).to.be.rejected;
+      })
+
+      it('should throw an error when not found', async () => {
+
+        const notFound = {
+          response: {
+            statusCode: 404
+          }
+        };
+
+        boundAppsFunction.returns(Promise.reject(notFound))
+
+        boundBatchFunction.returns(Promise.reject(notFound));
+
+        boundCoreFunction.returns(Promise.reject(notFound));
+
+        await expect(subject.patchAll([manifestCronJob, manifestDeployment, manifestService])).to.be.rejectedWith(ErrorNotFound);
+      })
     })
 
     describe('_patchStrategy', () => {
@@ -1169,9 +1261,11 @@ describe('k8s-api', () => {
           };
           expect(() => subject._patchStrategy(manifest)).to.throw(ErrorNotFound);
       })
+
+
     })
 
-    describe('_patchKindThroughApiStrategy', () => {
+    describe('_patchClusterObjectStrategy', () => {
 
       const manifestService = k8sManifest(`
         apiVersion: v1
@@ -1202,7 +1296,7 @@ describe('k8s-api', () => {
         }));
         coreClient[coreFunctionName].bind = sinon.stub().returns(boundCoreFunction);
 
-        subject._patchKindThroughApiStrategy(coreClient, kind, manifestService);
+        subject._patchClusterObjectStrategy(coreClient, kind, manifestService);
 
         const args = coreClient[coreFunctionName].bind.getCall(0).args;
         const options = args[8];
@@ -1211,7 +1305,7 @@ describe('k8s-api', () => {
 
       it('should reject unknown kinds', () => {
           const api = subject._clientApi('v1');
-          expect(() => subject._patchKindThroughApiStrategy(api, 'UnknownKind', manifestService)).to.throw(ErrorNotFound);
+          expect(() => subject._patchClusterObjectStrategy(api, 'UnknownKind', manifestService)).to.throw(ErrorNotFound);
       })
 
       it('should return a non-namespaced function if one exists', () => {
@@ -1231,7 +1325,7 @@ describe('k8s-api', () => {
             status:
               phase: Active
           `);
-          const strategy = subject._patchKindThroughApiStrategy(api, kind, manifest);
+          const strategy = subject._patchClusterObjectStrategy(api, kind, manifest);
           expect(strategy.name).to.include(`patch${kind}`);
           expect(strategy.name).not.to.include(`patchNamespaced`);
       })
@@ -1239,7 +1333,7 @@ describe('k8s-api', () => {
       it('should return a namespaced function if one exists', () => {
           const api = subject._clientApi('v1');
           const kind = 'Service';
-          const strategy = subject._patchKindThroughApiStrategy(api, kind, manifestService);
+          const strategy = subject._patchClusterObjectStrategy(api, kind, manifestService);
           expect(strategy.name).to.include(`patchNamespaced${kind}`);
       })
     })
