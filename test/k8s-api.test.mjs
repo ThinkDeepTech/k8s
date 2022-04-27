@@ -1,6 +1,6 @@
 import k8s from '@kubernetes/client-node';
 import { k8sManifest, objectify } from '@thinkdeep/k8s-manifest';
-import chai, { version } from 'chai';
+import chai from 'chai';
 import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
 import chaiAsPromised from 'chai-as-promised';
@@ -595,17 +595,17 @@ describe('k8s-api', () => {
         return groups[api.name];
     }
 
-    const initApiClients = (apis) => {
+    const initApiClients = (k8sApis) => {
 
-        const apiClients = {};
-        for (const api of apis) {
-            apiClients[api.name] = sinon.createStubInstance(api);
+        const clients = {};
+        for (const api of k8sApis) {
+          clients[api.name] = sinon.createStubInstance(api);
         }
-        return apiClients;
+        return clients;
     };
 
-    const apiClient = (api, apiClients) => {
-        return apiClients[api.name];
+    const apiClient = (api, clients) => {
+        return clients[api.name];
     };
 
     let apis;
@@ -747,7 +747,7 @@ describe('k8s-api', () => {
              * This is important because not all resource kinds returned in the resources of the resourceList objects are found
              * in the k8s module object. One such object is kind NodeProxyOptions included in the resource list in the beforeEach.
              */
-            const resourceList = k8sManifest(`
+            const k8sResourceList = k8sManifest(`
                 kind: APIResourceList
                 apiVersion: v1
                 groupVersion: events.k8s.io/v1beta1
@@ -770,7 +770,7 @@ describe('k8s-api', () => {
                     storageVersionHash: r2yiGXH7wu8=
             `);
 
-            expect(subject._applyResourceListValuesToMaps.bind(subject, null, resourceList)).not.to.throw();
+            expect(subject._applyResourceListValuesToMaps.bind(subject, null, k8sResourceList)).not.to.throw();
         })
     })
 
@@ -796,10 +796,10 @@ describe('k8s-api', () => {
 
             await subject._initClientMappings(kubeConfig, apis);
             const resList = resourceLists();
-            for (const [_, resourceList] of Object.entries(resList)) {
-                for (const resource of resourceList.resources) {
+            for (const [_, k8sResourceList] of Object.entries(resList)) {
+                for (const resource of k8sResourceList.resources) {
                     const actualGroupVersions = subject._kindToGroupVersion[normalizeKind(resource.kind).toLowerCase()];
-                    expect(actualGroupVersions).to.include(resourceList.groupVersion);
+                    expect(actualGroupVersions).to.include(k8sResourceList.groupVersion);
                 }
             }
             expect(Object.keys(resList).length).to.be.greaterThan(0);
@@ -810,9 +810,9 @@ describe('k8s-api', () => {
             await subject._initClientMappings(kubeConfig, apis);
 
             const groups = apiGroups();
-            for (const [_, apiGroup] of Object.entries(groups)) {
-                for (const entry of apiGroup.versions) {
-                    expect(subject._groupVersionToPreferredVersion[entry.groupVersion]).to.equal(apiGroup.preferredVersion.groupVersion);
+            for (const [_, k8sApiGroup] of Object.entries(groups)) {
+                for (const entry of k8sApiGroup.versions) {
+                    expect(subject._groupVersionToPreferredVersion[entry.groupVersion]).to.equal(k8sApiGroup.preferredVersion.groupVersion);
                 }
             }
 
