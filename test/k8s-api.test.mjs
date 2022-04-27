@@ -1031,7 +1031,7 @@ describe('k8s-api', () => {
       beforeEach(async () => {
 
         batchClient = apiClient(k8s.BatchV1Api, apiClients);
-        batchFunctionName = 'patchNamespacedCronJob';
+        batchFunctionName = 'createNamespacedCronJob';
         boundBatchFunction = sinon.stub();
         boundBatchFunction.returns(Promise.resolve({
           response: {
@@ -1041,7 +1041,7 @@ describe('k8s-api', () => {
         batchClient[batchFunctionName].bind = sinon.stub().returns(boundBatchFunction);
 
         appsClient = apiClient(k8s.AppsV1Api, apiClients);
-        appsFunctionName = 'patchNamespacedDeployment';
+        appsFunctionName = 'createNamespacedDeployment';
         boundAppsFunction = sinon.stub();
         boundAppsFunction.returns(Promise.resolve({
           response: {
@@ -1051,7 +1051,7 @@ describe('k8s-api', () => {
         appsClient[appsFunctionName].bind = sinon.stub().returns(boundAppsFunction);
 
         coreClient = apiClient(k8s.CoreV1Api, apiClients);
-        coreFunctionName = 'patchNamespacedService';
+        coreFunctionName = 'createNamespacedService';
         boundCoreFunction = sinon.stub();
         boundCoreFunction.returns(Promise.resolve({
           response: {
@@ -1073,7 +1073,7 @@ describe('k8s-api', () => {
 
       it('should throw an error when creation fails with no status code', async () => {
 
-        boundBatchCreateFunction.returns(Promise.reject());
+        boundBatchFunction.returns(Promise.reject());
 
         await expect(subject.createAll([manifestCronJob, manifestDeployment, manifestService])).to.be.rejected;
       })
@@ -1152,7 +1152,23 @@ describe('k8s-api', () => {
     })
 
     describe('_patchStrategy', () => {
-      // TODO
+      const manifestService = k8sManifest(`
+        apiVersion: v1
+        kind: Service
+        metadata:
+          namespace: "default"
+      `);
+
+      beforeEach(async () => {
+        await subject.init(kubeConfig, apis);
+      })
+
+      it('should reject unknown kinds', () => {
+          const manifest = {
+            kind: 'UnknownKind'
+          };
+          expect(() => subject._patchStrategy(manifest)).to.throw(ErrorNotFound);
+      })
     })
 
     describe('_patchKindThroughApiStrategy', () => {
@@ -1170,6 +1186,27 @@ describe('k8s-api', () => {
 
       it('should send in the correct content type', () => {
 
+        /**
+         * If the content type is not set the request fails saying it can't handle
+         * application/json.
+         */
+
+        const kind = 'Service';
+        const coreClient = apiClient(k8s.CoreV1Api, apiClients);
+        const coreFunctionName = `patchNamespaced${kind}`;
+        const boundCoreFunction = sinon.stub();
+        boundCoreFunction.returns(Promise.resolve({
+          response: {
+            body: objectify(manifestService)
+          }
+        }));
+        coreClient[coreFunctionName].bind = sinon.stub().returns(boundCoreFunction);
+
+        subject._patchKindThroughApiStrategy(coreClient, kind, manifestService);
+
+        const args = coreClient[coreFunctionName].bind.getCall(0).args;
+        const options = args[8];
+        expect(options.headers['Content-type']).to.equal('application/merge-patch+json');
       })
 
       it('should reject unknown kinds', () => {
