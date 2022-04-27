@@ -508,7 +508,7 @@ class K8sApi {
             throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
         }
 
-        const apis = this._clientApis(kind);
+        const apis = this._clientApis(_kind);
 
         let strategies = [];
         for (const api of apis) {
