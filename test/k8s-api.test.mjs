@@ -17,11 +17,6 @@ describe('k8s-api', () => {
     const apiGroupResourceFunction = 'getAPIGroup';
     const apiResourcesFunction = 'getAPIResources';
 
-    const createBoundFunction = (api, apiClient, clientFunction, ...args) => {
-
-      const boundCoreCreationFunction = createBoundFunction(k8s.CoreV1Api, apiClients, coreCreationFunctionName, manifestService);
-    };
-
     const resourceLists = () => {
         return {
             [`${k8s.EventsV1Api.name}`]: k8sManifest(`
@@ -483,6 +478,44 @@ describe('k8s-api', () => {
                   verbs:
                     - create
             `),
+            [`${k8s.BatchV1beta1Api.name}`]: k8sManifest(`
+                kind: APIResourceList
+                apiVersion: v1
+                groupVersion: batch/v1beta1
+                resources:
+                  - name: cronjobs
+                    singularName: ''
+                    namespaced: true
+                    kind: CronJob
+                    verbs:
+                      - create
+                      - delete
+                      - deletecollection
+                      - get
+                      - list
+                      - patch
+                      - update
+                      - watch
+                    shortNames:
+                      - ev
+                    storageVersionHash: r2yiGXH7wu8=
+                  - name: jobs
+                    singularName: ''
+                    namespaced: true
+                    kind: Job
+                    verbs:
+                      - create
+                      - delete
+                      - deletecollection
+                      - get
+                      - list
+                      - patch
+                      - update
+                      - watch
+                    shortNames:
+                      - ev
+                    storageVersionHash: r2yiGXH7wu8=
+            `),
             [`${k8s.AppsV1Api.name}`]: k8sManifest(`
               kind: APIResourceList
               groupVersion: apps/v1
@@ -537,6 +570,8 @@ describe('k8s-api', () => {
                 versions:
                   - groupVersion: batch/v1
                     version: v1
+                  - groupVersion: batch/v1beta1
+                    version: v1beta1
                 preferredVersion:
                   groupVersion: batch/v1
                   version: v1
@@ -591,6 +626,7 @@ describe('k8s-api', () => {
         versionedApis = [
           k8s.AppsV1Api,
           k8s.BatchV1Api,
+          k8s.BatchV1beta1Api,
           k8s.CoreV1Api,
           k8s.EventsV1Api
         ];
@@ -606,6 +642,7 @@ describe('k8s-api', () => {
         kubeConfig.makeApiClient.withArgs(k8s.AppsV1Api).returns(apiClient(k8s.AppsV1Api, apiClients));
         kubeConfig.makeApiClient.withArgs(k8s.BatchApi).returns(apiClient(k8s.BatchApi, apiClients));
         kubeConfig.makeApiClient.withArgs(k8s.BatchV1Api).returns(apiClient(k8s.BatchV1Api, apiClients));
+        kubeConfig.makeApiClient.withArgs(k8s.BatchV1beta1Api).returns(apiClient(k8s.BatchV1beta1Api, apiClients));
         kubeConfig.makeApiClient.withArgs(k8s.CoreV1Api).returns(apiClient(k8s.CoreV1Api, apiClients));
         kubeConfig.makeApiClient.withArgs(k8s.EventsApi).returns(apiClient(k8s.EventsApi, apiClients));
         kubeConfig.makeApiClient.withArgs(k8s.EventsV1Api).returns(apiClient(k8s.EventsV1Api, apiClients))
@@ -646,15 +683,21 @@ describe('k8s-api', () => {
             }
         }));
 
-        apiClient(k8s.EventsV1Api, apiClients)[apiResourcesFunction].returns(Promise.resolve({
+        apiClient(k8s.BatchV1beta1Api, apiClients)[apiResourcesFunction].returns(Promise.resolve({
             response: {
-                body: objectify(resourceList(k8s.EventsV1Api))
+                body: objectify(resourceList(k8s.BatchV1beta1Api))
             }
         }));
 
         apiClient(k8s.CoreV1Api, apiClients)[apiResourcesFunction].returns(Promise.resolve({
             response: {
                 body: objectify(resourceList(k8s.CoreV1Api))
+            }
+        }));
+
+        apiClient(k8s.EventsV1Api, apiClients)[apiResourcesFunction].returns(Promise.resolve({
+            response: {
+                body: objectify(resourceList(k8s.EventsV1Api))
             }
         }));
 
@@ -1330,19 +1373,70 @@ describe('k8s-api', () => {
     })
 
     describe('listAll', () => {
-      // TODO
 
+      const manifestCronJobV1 = k8sManifest(`
+        apiVersion: batch/v1
+        kind: CronJob
+        metadata:
+          namespace: "default"
+          name: "v1-cron-job"
+      `);
+
+      const manifestCronJobV1beta1 = k8sManifest(`
+        apiVersion: batch/v1beta1
+        kind: CronJob
+        metadata:
+          namespace: "default"
+          name: "beta-cron-job"
+      `);
+
+      let v1Client;
+      let batchFunctionName;
+      let boundV1Function;
+      let v1beta1Client;
+      let boundV1beta1Function;
       beforeEach(async () => {
+
+        batchFunctionName = 'createNamespacedCronJob';
+
+        v1Client = apiClient(k8s.BatchV1Api, apiClients);
+        boundV1Function = sinon.stub();
+        boundV1Function.returns(Promise.resolve({
+          response: {
+            body: objectify(manifestCronJobV1)
+          }
+        }));
+        v1Client[batchFunctionName].bind = sinon.stub().returns(boundV1Function);
+
+        v1beta1Client = apiClient(k8s.BatchV1beta1Api, apiClients);
+        boundV1beta1Function = sinon.stub();
+        boundV1beta1Function.returns(Promise.resolve({
+          response: {
+            body: objectify(manifestCronJobV1beta1)
+          }
+        }));
+        v1beta1Client[batchFunctionName].bind = sinon.stub().returns(boundV1beta1Function);
+
         await subject.init(kubeConfig, apis);
       })
+
 
       it('should reject unknown kinds', async () => {
           await expect(subject.listAll('UnknownKind', 'UnknownNamespace')).to.be.rejectedWith(ErrorNotFound);
       })
+
+      it('should assign api version to returned resources', async () => {
+        // TODO
+      })
+
+
+      it('should assign kind to returned resources', async () => {
+
+      })
+
     })
 
     describe('_broadcastListStrategy', () => {
-      // TODO
       beforeEach(async () => {
         await subject.init(kubeConfig, apis);
       })

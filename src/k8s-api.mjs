@@ -491,6 +491,9 @@ class K8sApi {
             }
 
             const kindList = k8sManifest(body);
+
+            console.log(`Listed manifest:\n\n${stringify(kindList)}`);
+
             for (let i = 0; i < kindList.items.length; i++) {
                 kindList.items[i].apiVersion = kindList.apiVersion;
                 kindList.items[i].kind = normalizeKind(kindList.items[i]?.constructor?.name || '');
@@ -515,9 +518,7 @@ class K8sApi {
             strategies.push(this._listClusterObjectsStrategy(api, _kind, namespace));
         }
 
-        const gatherAllKindLists = (stgs) => Promise.all(stgs.map((strategy) =>  strategy()));
-
-        return gatherAllKindLists.bind(null, strategies);
+        return this._handleStrategyExecution.bind(this, strategies)
     }
 
     _listClusterObjectsStrategy(api, kind, namespace) {
