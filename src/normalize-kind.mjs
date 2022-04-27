@@ -10,7 +10,7 @@ const initKindMap = () => {
     }
 }
 
-const k8sKind = (prospectiveKind) => {
+const normalizeKind = (prospectiveKind) => {
 
     if (Object.keys(kindStringToManifestKindMap).length === 0) {
         initKindMap();
@@ -18,7 +18,7 @@ const k8sKind = (prospectiveKind) => {
 
     const versionlessKind = removeVersion(prospectiveKind);
 
-    const targetKind = kindStringToManifestKindMap[versionlessKind.toLowerCase()] || versionlessKind || '';
+    const targetKind = kindStringToManifestKindMap[versionlessKind.toLowerCase()] || versionlessKind;
 
     if (!targetKind) {
         throw new Error(`The kind ${prospectiveKind} wasn't found in the k8s client library. The kind found was ${targetKind}. Are you sure you supplied an accepted kind?`);
@@ -38,4 +38,4 @@ const removeVersion = (constructorName) => {
     return matches[0];
 }
 
-export { k8sKind };
+export { normalizeKind };
