@@ -998,35 +998,41 @@ describe('k8s-api', () => {
 
     describe('createAll', () => {
 
+      const manifestCronJob = k8sManifest(`
+        apiVersion: batch/v1
+        kind: CronJob
+        metadata:
+          namespace: "default"
+      `);
+
+      const manifestDeployment = k8sManifest(`
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          namespace: "default"
+      `);
+
+      const manifestService = k8sManifest(`
+        apiVersion: v1
+        kind: Service
+        metadata:
+          namespace: "default"
+      `);
+
+      let batchClient;
+      let batchCreationFunction;
+      let boundBatchCreateFunction;
+      let appsClient;
+      let appsCreateFunction;
+      let boundAppsCreateFunction;
+      let coreClient;
+      let coreCreateFunction;
+      let boundCoreCreateFunction;
       beforeEach(async () => {
-        await subject.init(kubeConfig, apis);
-      })
 
-      it.only('should execute creation in the same order as the provided manifests', async () => {
-        const manifestCronJob = k8sManifest(`
-          apiVersion: batch/v1
-          kind: CronJob
-          metadata:
-            namespace: "default"
-        `);
-
-        const manifestDeployment = k8sManifest(`
-          apiVersion: apps/v1
-          kind: Deployment
-          metadata:
-            namespace: "default"
-        `);
-
-        const manifestService = k8sManifest(`
-          apiVersion: v1
-          kind: Service
-          metadata:
-            namespace: "default"
-        `);
-
-        const batchClient = apiClient(k8s.BatchV1Api, apiClients);
-        const batchCreationFunction = 'createNamespacedCronJob';
-        const boundBatchCreateFunction = sinon.stub();
+        batchClient = apiClient(k8s.BatchV1Api, apiClients);
+        batchCreationFunction = 'createNamespacedCronJob';
+        boundBatchCreateFunction = sinon.stub();
         boundBatchCreateFunction.returns(Promise.resolve({
           response: {
             body: objectify(manifestCronJob)
@@ -1034,9 +1040,9 @@ describe('k8s-api', () => {
         }));
         batchClient[batchCreationFunction].bind = sinon.stub().returns(boundBatchCreateFunction);
 
-        const appsClient = apiClient(k8s.AppsV1Api, apiClients);
-        const appsCreateFunction = 'createNamespacedDeployment';
-        const boundAppsCreateFunction = sinon.stub();
+        appsClient = apiClient(k8s.AppsV1Api, apiClients);
+        appsCreateFunction = 'createNamespacedDeployment';
+        boundAppsCreateFunction = sinon.stub();
         boundAppsCreateFunction.returns(Promise.resolve({
           response: {
             body: objectify(manifestDeployment)
@@ -1044,9 +1050,9 @@ describe('k8s-api', () => {
         }));
         appsClient[appsCreateFunction].bind = sinon.stub().returns(boundAppsCreateFunction);
 
-        const coreClient = apiClient(k8s.CoreV1Api, apiClients);
-        const coreCreateFunction = 'createNamespacedService';
-        const boundCoreCreateFunction = sinon.stub();
+        coreClient = apiClient(k8s.CoreV1Api, apiClients);
+        coreCreateFunction = 'createNamespacedService';
+        boundCoreCreateFunction = sinon.stub();
         boundCoreCreateFunction.returns(Promise.resolve({
           response: {
             body: objectify(manifestService)
@@ -1054,11 +1060,44 @@ describe('k8s-api', () => {
         }));
         coreClient[coreCreateFunction].bind = sinon.stub().returns(boundCoreCreateFunction);
 
+        await subject.init(kubeConfig, apis);
+      })
+
+      it('should execute creation in the same order as the provided manifests', async () => {
         const actuals = await subject.createAll([manifestCronJob, manifestDeployment, manifestService]);
 
         expect(actuals[0].constructor.name).to.include('CronJob');
         expect(actuals[1].constructor.name).to.include('Deployment');
         expect(actuals[2].constructor.name).to.include('Service');
+      })
+
+      it('should throw an error when creation fails with no status code', async () => {
+
+        boundBatchCreateFunction.returns(Promise.reject());
+
+        await expect(subject.createAll([manifestCronJob, manifestDeployment, manifestService])).to.be.rejected;
+      })
+
+      it('should throw an error when creation fails with a status code other than already exists (409)', async () => {
+
+        boundBatchCreateFunction.returns(Promise.reject({
+          response: {
+            statusCode: 401
+          }
+        }));
+
+        await expect(subject.createAll([manifestCronJob, manifestDeployment, manifestService])).to.be.rejected;
+      })
+
+      it('should not throw an error when creation fails with a status code of already exists (409)', async () => {
+
+        boundBatchCreateFunction.returns(Promise.reject({
+          response: {
+            statusCode: 409
+          }
+        }));
+
+        await expect(subject.createAll([manifestCronJob, manifestDeployment, manifestService])).not.to.be.rejected;
       })
     })
 
