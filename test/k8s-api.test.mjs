@@ -1479,18 +1479,7 @@ describe('k8s-api', () => {
       })
     })
 
-    describe('deleteAll', () => {
-
-      // TODO
-
-      beforeEach(async () => {
-        await subject.init(kubeConfig, apis);
-      })
-    })
-
     describe('_deletionStrategy', () => {
-
-      // TODO
 
       beforeEach(async () => {
         await subject.init(kubeConfig, apis);
