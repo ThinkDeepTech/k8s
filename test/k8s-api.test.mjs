@@ -1479,6 +1479,72 @@ describe('k8s-api', () => {
       })
     })
 
+    describe('deleteAll', () => {
+
+      // TODO
+
+      beforeEach(async () => {
+        await subject.init(kubeConfig, apis);
+      })
+    })
+
+    describe('_deletionStrategy', () => {
+
+      // TODO
+
+      beforeEach(async () => {
+        await subject.init(kubeConfig, apis);
+      })
+
+      it('should reject unknown kinds', () => {
+          const manifest = {
+            apiVersion: 'batch/v1',
+            kind: "UnknownKind"
+          };
+
+          expect(() => subject._deletionStrategy(manifest)).to.throw(ErrorNotFound);
+      })
+    })
+
+    describe('_deleteClusterObjectStrategy', () => {
+
+      beforeEach(async () => {
+        await subject.init(kubeConfig, apis);
+      })
+
+      it('should reject unknown kinds', () => {
+          expect(() => subject._deleteClusterObjectStrategy({}, 'UnknownKind', {})).to.throw(ErrorNotFound);
+      })
+
+      it('should return a non-namespaced function if one exists', () => {
+          const api = subject._clientApi('v1');
+          const kind = 'Namespace';
+          const manifest = {
+            metadata: {
+              name: 'unimportant',
+              namespace: 'unimportant-too'
+            }
+          };
+          const strategy = subject._deleteClusterObjectStrategy(api, kind, manifest);
+          expect(strategy.name).to.include(`delete${kind}`);
+          expect(strategy.name).not.to.include(`deleteNamespaced`);
+      })
+
+      it('should return a namespaced function if one exists and the namespace is defined', () => {
+          const api = subject._clientApi('v1');
+          const kind = 'Service';
+          const manifest = {
+            metadata: {
+              name: 'unimportant',
+              namespace: 'unimportant-too',
+              kind
+            }
+          };
+          const strategy = subject._deleteClusterObjectStrategy(api, kind, manifest);
+          expect(strategy.name).to.include(`deleteNamespaced${kind}`);
+      })
+    })
+
     describe('_registeredKind', () => {
         beforeEach(async () => {
             await subject.init(kubeConfig, apis);

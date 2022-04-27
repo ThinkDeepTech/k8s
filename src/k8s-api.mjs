@@ -561,22 +561,22 @@ class K8sApi {
     _deletionStrategy(manifest) {
 
         if (!manifest) {
-            throw new Error(`The manifest value is invalid: ${manifest}`);
+            throw new Error(`The manifest value wasn't defined.`);
         }
 
         if (!this._registeredKind(manifest.kind)) {
-            throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
+            throw new ErrorNotFound(`Kind ${manifest.kind} was not found in the API. Are you sure it's correctly spelled?`);
         }
 
         if (!manifest.apiVersion) {
-            throw new ErrorNotFound(`The manifest requires an api version.`);
+            throw new Error(`The api version wasn't defined.`);
         }
 
         const api = this._clientApi(manifest.apiVersion);
-        return this._handleStrategyExecution.bind(this, [this._deleteKindThroughApiStrategy(api, normalizeKind(manifest.kind), manifest)]);
+        return this._handleStrategyExecution.bind(this, [this._deleteClusterObjectStrategy(api, normalizeKind(manifest.kind), manifest)]);
     }
 
-    _deleteKindThroughApiStrategy(api, kind, manifest) {
+    _deleteClusterObjectStrategy(api, kind, manifest) {
 
         const _kind = normalizeKind(kind);
 
