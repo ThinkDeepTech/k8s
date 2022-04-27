@@ -480,7 +480,7 @@ class K8sApi {
             throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
         }
 
-        const responses = await this._listStrategy(kind, namespace)();
+        const responses = await this._broadcastListStrategy(kind, namespace)();
 
         return Promise.all(responses.map((data) => {
 
@@ -500,7 +500,7 @@ class K8sApi {
         }));
     }
 
-    _listStrategy(kind, namespace) {
+    _broadcastListStrategy(kind, namespace) {
 
         const _kind = normalizeKind(kind);
 
@@ -512,7 +512,7 @@ class K8sApi {
 
         let strategies = [];
         for (const api of apis) {
-            strategies.push(this._listKindThroughApiStrategy(api, _kind, namespace));
+            strategies.push(this._listClusterObjectsStrategy(api, _kind, namespace));
         }
 
         const gatherAllKindLists = (stgs) => Promise.all(stgs.map((strategy) =>  strategy()));
@@ -520,7 +520,7 @@ class K8sApi {
         return gatherAllKindLists.bind(null, strategies);
     }
 
-    _listKindThroughApiStrategy(api, kind, namespace) {
+    _listClusterObjectsStrategy(api, kind, namespace) {
 
         const _kind = normalizeKind(kind);
 
@@ -528,12 +528,15 @@ class K8sApi {
             throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
         }
 
-        if (!namespace && api[`list${_kind}ForAllNamespaces`]) {
+        if (api[`list${kind}`]) {
 
-            return api[`list${_kind}ForAllNamespaces`].bind(api);
+            return api[`list${kind}`].bind(api);
         } else if (!!namespace && api[`listNamespaced${_kind}`]) {
 
             return api[`listNamespaced${_kind}`].bind(api, namespace);
+        } else if (!namespace && api[`list${_kind}ForAllNamespaces`]) {
+
+            return api[`list${_kind}ForAllNamespaces`].bind(api);
         } else {
 
             const namespaceText = namespace ? `and namespace ${namespace}` : ``;

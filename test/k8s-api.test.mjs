@@ -1144,7 +1144,7 @@ describe('k8s-api', () => {
       })
     })
 
-    describe.only('patchAll', () => {
+    describe('patchAll', () => {
       const manifestCronJob = k8sManifest(`
         apiVersion: batch/v1
         kind: CronJob
@@ -1243,14 +1243,7 @@ describe('k8s-api', () => {
       })
     })
 
-    describe('_patchStrategy', () => {
-      const manifestService = k8sManifest(`
-        apiVersion: v1
-        kind: Service
-        metadata:
-          namespace: "default"
-      `);
-
+    describe('_broadcastPatchStrategy', () => {
       beforeEach(async () => {
         await subject.init(kubeConfig, apis);
       })
@@ -1259,10 +1252,8 @@ describe('k8s-api', () => {
           const manifest = {
             kind: 'UnknownKind'
           };
-          expect(() => subject._patchStrategy(manifest)).to.throw(ErrorNotFound);
+          expect(() => subject._broadcastPatchStrategy(manifest)).to.throw(ErrorNotFound);
       })
-
-
     })
 
     describe('_patchClusterObjectStrategy', () => {
@@ -1335,6 +1326,62 @@ describe('k8s-api', () => {
           const kind = 'Service';
           const strategy = subject._patchClusterObjectStrategy(api, kind, manifestService);
           expect(strategy.name).to.include(`patchNamespaced${kind}`);
+      })
+    })
+
+    describe('listAll', () => {
+      // TODO
+
+      beforeEach(async () => {
+        await subject.init(kubeConfig, apis);
+      })
+
+      it('should reject unknown kinds', async () => {
+          await expect(subject.listAll('UnknownKind', 'UnknownNamespace')).to.be.rejectedWith(ErrorNotFound);
+      })
+    })
+
+    describe('_broadcastListStrategy', () => {
+      // TODO
+      beforeEach(async () => {
+        await subject.init(kubeConfig, apis);
+      })
+
+      it('should reject unknown kinds', () => {
+          expect(() => subject._broadcastListStrategy('UnknownKind', 'UnknownNamespace')).to.throw(ErrorNotFound);
+      })
+    })
+
+    describe('_listClusterObjectsStrategy', () => {
+
+      beforeEach(async () => {
+        await subject.init(kubeConfig, apis);
+      })
+
+      it('should reject unknown kinds', () => {
+          expect(() => subject._listClusterObjectsStrategy({}, 'UnknownKind', 'UnknownNamespace')).to.throw(ErrorNotFound);
+      })
+
+      it('should return a non-namespaced function if one exists', () => {
+          const api = subject._clientApi('v1');
+          const kind = 'Namespace';
+          const strategy = subject._listClusterObjectsStrategy(api, kind, 'development');
+          expect(strategy.name).to.include(`list${kind}`);
+          expect(strategy.name).not.to.include(`listNamespaced`);
+      })
+
+      it('should return a namespaced function if one exists and the namespace is defined', () => {
+          const api = subject._clientApi('v1');
+          const kind = 'Service';
+          const strategy = subject._listClusterObjectsStrategy(api, kind, 'development');
+          expect(strategy.name).to.include(`listNamespaced${kind}`);
+      })
+
+      it('should return a list all function if no namespace is supplied', () => {
+          const api = apiClient(k8s.CoreV1Api, apiClients);
+          const kind = 'Service';
+          const strategy = subject._listClusterObjectsStrategy(api, kind);
+          expect(strategy.name).to.include(`list${kind}ForAllNamespaces`);
       })
     })
 
