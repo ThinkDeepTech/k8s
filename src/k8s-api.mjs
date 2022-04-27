@@ -232,8 +232,6 @@ class K8sApi {
         for (const manifest of manifests) {
             try {
 
-                console.log(`Current manifest:\n\n${stringify(manifest)}`);
-
                 const strategy = this._creationStrategy(manifest);
 
                 const received = await strategy();
