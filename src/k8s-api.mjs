@@ -142,7 +142,11 @@ class K8sApi {
             try {
                 const {response: {body}} = await fetchResources.bind(apiClient)();
 
-                callback(apiClient, k8sManifest(body));
+                const manifest = k8sManifest(body);
+
+                console.log(`Current manifest:\n\n${stringify(manifest)}`);
+
+                callback(apiClient, manifest);
             } catch (e) {
 
                 if (!e?.response?.statusCode || e?.response?.statusCode !== 404) {
