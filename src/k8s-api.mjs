@@ -142,6 +142,8 @@ class K8sApi {
             try {
                 const {response: {body}} = await fetchResources.bind(apiClient)();
 
+                console.log(`Current body:\n\n${JSON.stringify(body)}`);
+
                 const manifest = k8sManifest(body);
 
                 console.log(`Current manifest:\n\n${stringify(manifest)}`);
