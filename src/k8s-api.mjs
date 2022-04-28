@@ -163,14 +163,7 @@ class K8sApi {
     }
 
     _groupVersions(kind) {
-
-        const groupVersions = this._kindToGroupVersion[normalizeKind(kind).toLowerCase()] || new Set();
-
-        if (groupVersions.size <= 0) {
-            throw new ErrorNotFound(`The kind ${kind} didn't have any registered group versions. Are you sure you're using an accepted kind?`);
-        }
-
-        return groupVersions;
+        return this._kindToGroupVersion[normalizeKind(kind).toLowerCase()] || new Set();
     }
 
     _clientApis(kind) {
@@ -198,7 +191,7 @@ class K8sApi {
             const registeredPreferredVersion = this._groupVersionToPreferredVersion[groupVersion.toLowerCase()] || '';
             preferredVersions.push(registeredPreferredVersion);
         }
-        return new Set(preferredVersions.filter((val) => !!val));
+        return preferredVersions.filter((val) => !!val);
     }
 
     _registeredKind(kind) {
@@ -217,9 +210,7 @@ class K8sApi {
 
         const kindGroups = this._groupVersions(kind);
 
-        const targetVersions = this._preferredApiVersions(kindGroups);
-
-        return targetVersions;
+        return this._preferredApiVersions(kindGroups);
     }
 
     /**
