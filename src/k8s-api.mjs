@@ -1,5 +1,5 @@
 import k8s from '@kubernetes/client-node';
-import { k8sManifest, stringify } from '@thinkdeep/k8s-manifest';
+import { k8sManifest } from '@thinkdeep/k8s-manifest';
 import {ErrorNotFound} from './error/error-not-found.mjs'
 import { normalizeKind } from './normalize-kind.mjs';
 
