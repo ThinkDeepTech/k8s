@@ -182,12 +182,13 @@ class K8sApi {
         /**
          * A given kind can be part of multiple groups. Therefore, there are multiple preferred versions.
          */
-        let preferredVersions = [];
+        let preferredVersions = new Set();
         for (const groupVersion of groupVersions) {
             const registeredPreferredVersion = this._groupVersionToPreferredVersion[groupVersion.toLowerCase()] || '';
-            preferredVersions.push(registeredPreferredVersion);
+            preferredVersions.add(registeredPreferredVersion);
         }
-        return preferredVersions.filter((val) => !!val);
+
+        return [...preferredVersions].filter((val) => !!val);
     }
 
     _registeredKind(kind) {
@@ -496,8 +497,6 @@ class K8sApi {
             const kindList = k8sManifest( this._configuredManifestObject(body) );
 
             this._memoizeManifestMetadata(kindList);
-
-            console.log(`Listed manifest:\n\n${stringify(kindList)}`);
 
             for (let i = 0; i < kindList.items.length; i++) {
                 kindList.items[i].apiVersion = kindList.apiVersion;

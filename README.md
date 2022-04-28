@@ -49,16 +49,16 @@ Assuming the role binding linking the necessary role and service account has the
                         spec:
                             containers:
                                 - name: "${process.env.HELM_RELEASE_NAME}-data-collector"
-                                    image: "${options.image}"
-                                    command: ["${options.command}"]
-                                    args: ${JSON.stringify(options.args)}
-                                    envFrom:
-                                    - secretRef:
-                                        name: "${process.env.HELM_RELEASE_NAME}-deep-microservice-collection-secret"
-                                    ${ process.env.PREDECOS_KAFKA_SECRET ? `
-                                    - secretRef:
-                                        name: "${process.env.PREDECOS_KAFKA_SECRET}"
-                                    ` : ``}
+                                  image: "${options.image}"
+                                  command: ["${options.command}"]
+                                  args: ${JSON.stringify(options.args)}
+                                  envFrom:
+                                  - secretRef:
+                                      name: "${process.env.HELM_RELEASE_NAME}-deep-microservice-collection-secret"
+                                  ${ process.env.PREDECOS_KAFKA_SECRET ? `
+                                  - secretRef:
+                                      name: "${process.env.PREDECOS_KAFKA_SECRET}"
+                                  ` : ``}
                             serviceAccountName: "${process.env.HELM_RELEASE_NAME}-secret-accessor-service-account"
                             restartPolicy: "Never"
                             imagePullSecrets:
