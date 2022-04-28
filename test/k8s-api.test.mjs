@@ -827,7 +827,7 @@ describe('k8s-api', () => {
              * It's important that Event be used as the kind here because it appears in multiple locations
              * in the resource lists and is part of a group that doesn't have an entry in api groups.
              */
-            const actualPreferredVersions = subject.preferredVersions('Event')
+            const actualPreferredVersions = subject.preferredApiVersions('Event')
             expect(actualPreferredVersions).to.include('events.k8s.io/v1');
             expect(actualPreferredVersions).to.include('v1');
 
@@ -835,20 +835,20 @@ describe('k8s-api', () => {
 
     })
 
-    describe('preferredVersions', () => {
+    describe('preferredApiVersions', () => {
 
         beforeEach(async () => {
             await subject.init(kubeConfig, apis);
         })
 
         it('should map the k8s kind to its preferred api versions', async () => {
-            const actualPreferredVersions = subject.preferredVersions('Event')
+            const actualPreferredVersions = subject.preferredApiVersions('Event')
             expect(actualPreferredVersions).to.include('events.k8s.io/v1');
             expect(actualPreferredVersions).to.include('v1');
         })
 
         it('should throw an error if an invalid kind is used', () => {
-            expect(() => subject.preferredVersions('NonExistantKind')).to.throw(ErrorNotFound);
+            expect(() => subject.preferredApiVersions('NonExistantKind')).to.throw(ErrorNotFound);
         })
     })
 
