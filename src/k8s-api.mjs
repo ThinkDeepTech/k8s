@@ -496,12 +496,15 @@ class K8sApi {
 
             const kindList = k8sManifest( this._configuredManifestObject(body) );
 
-            this._memoizeManifestMetadata(kindList);
-
             for (let i = 0; i < kindList.items.length; i++) {
                 kindList.items[i].apiVersion = kindList.apiVersion;
                 kindList.items[i].kind = normalizeKind(kindList.items[i]?.constructor?.name || '');
-                this._memoizeManifestMetadata(kindList.items[i]);
+            }
+
+            this._memoizeManifestMetadata(kindList);
+
+            if (Array.isArray(kindList.items) && kindList.items.length > 0) {
+                this._memoizeManifestMetadata(kindList.items[0]);
             }
 
             return kindList;
