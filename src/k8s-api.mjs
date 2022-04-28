@@ -215,17 +215,9 @@ class K8sApi {
      */
     preferredApiVersions(kind) {
 
-        if (!this._registeredKind(kind)) {
-            throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
-        }
-
         const kindGroups = this._groupVersions(kind);
 
         const targetVersions = this._preferredApiVersions(kindGroups);
-
-        if (targetVersions.size <= 0) {
-            throw new ErrorNotFound(`The kind ${kind} didn't have registered preferred versions. Are you sure you're using an accepted kind?`);
-        }
 
         return targetVersions;
     }
