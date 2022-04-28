@@ -827,7 +827,7 @@ describe('k8s-api', () => {
              * It's important that Event be used as the kind here because it appears in multiple locations
              * in the resource lists and is part of a group that doesn't have an entry in api groups.
              */
-            const actualPreferredVersions = subject.preferredVersions('Event')
+            const actualPreferredVersions = subject.preferredApiVersions('Event')
             expect(actualPreferredVersions).to.include('events.k8s.io/v1');
             expect(actualPreferredVersions).to.include('v1');
 
@@ -835,20 +835,16 @@ describe('k8s-api', () => {
 
     })
 
-    describe('preferredVersions', () => {
+    describe('preferredApiVersions', () => {
 
         beforeEach(async () => {
             await subject.init(kubeConfig, apis);
         })
 
         it('should map the k8s kind to its preferred api versions', async () => {
-            const actualPreferredVersions = subject.preferredVersions('Event')
+            const actualPreferredVersions = subject.preferredApiVersions('Event')
             expect(actualPreferredVersions).to.include('events.k8s.io/v1');
             expect(actualPreferredVersions).to.include('v1');
-        })
-
-        it('should throw an error if an invalid kind is used', () => {
-            expect(() => subject.preferredVersions('NonExistantKind')).to.throw(ErrorNotFound);
         })
     })
 
@@ -1390,6 +1386,201 @@ describe('k8s-api', () => {
           name: "beta-cron-job"
       `);
 
+      const cronJobList = k8sManifest(`
+        kind: CronJobList
+        apiVersion: batch/v1beta1
+        metadata:
+          resourceVersion: '23576181'
+        items:
+          - metadata:
+              name: fetch-tweets-apple-business
+              namespace: development
+              uid: ffc919e3-8abd-458a-9123-792c31784f4b
+              resourceVersion: '23576152'
+              creationTimestamp: 2022-04-28T15:38:20.000Z
+              managedFields:
+                - manager: unknown
+                  operation: Update
+                  apiVersion: batch/v1
+                  time: 2022-04-28T15:38:20.000Z
+                  fieldsType: FieldsV1
+                  fieldsV1:
+                    f:spec:
+                      f:concurrencyPolicy: {}
+                      f:failedJobsHistoryLimit: {}
+                      f:jobTemplate:
+                        f:spec:
+                          f:template:
+                            f:spec:
+                              f:containers:
+                                k:{"name":"v1-data-collector"}:
+                                  .: {}
+                                  f:args: {}
+                                  f:command: {}
+                                  f:envFrom: {}
+                                  f:image: {}
+                                  f:imagePullPolicy: {}
+                                  f:name: {}
+                                  f:resources: {}
+                                  f:terminationMessagePath: {}
+                                  f:terminationMessagePolicy: {}
+                              f:dnsPolicy: {}
+                              f:imagePullSecrets:
+                                .: {}
+                                k:{"name":"docker-secret"}:
+                                  .: {}
+                                  f:name: {}
+                              f:restartPolicy: {}
+                              f:schedulerName: {}
+                              f:securityContext: {}
+                              f:serviceAccount: {}
+                              f:serviceAccountName: {}
+                              f:terminationGracePeriodSeconds: {}
+                      f:successfulJobsHistoryLimit: {}
+                      f:suspend: {}
+                - manager: unknown
+                  operation: Update
+                  apiVersion: batch/v1beta1
+                  time: 2022-04-28T15:38:30.000Z
+                  fieldsType: FieldsV1
+                  fieldsV1:
+                    f:spec:
+                      f:schedule: {}
+            spec:
+              schedule: 0 */12 * * *
+              concurrencyPolicy: Allow
+              suspend: false
+              jobTemplate:
+                metadata:
+                  creationTimestamp: null
+                spec:
+                  template:
+                    metadata:
+                      creationTimestamp: null
+                    spec:
+                      containers:
+                        - name: v1-data-collector
+                          image: thinkdeeptech/collect-data:latest
+                          command:
+                            - node
+                          args:
+                            - src/collect-data.mjs
+                            - '--entity-name=Apple'
+                            - '--entity-type=BUSINESS'
+                            - '--operation-type=fetch-tweets'
+                          envFrom:
+                            - secretRef:
+                                name: v1-deep-microservice-collection-secret
+                            - secretRef:
+                                name: deep-kafka-secret
+                          resources: {}
+                          terminationMessagePath: /dev/termination-log
+                          terminationMessagePolicy: File
+                          imagePullPolicy: Always
+                      restartPolicy: Never
+                      terminationGracePeriodSeconds: 30
+                      dnsPolicy: ClusterFirst
+                      serviceAccountName: v1-secret-accessor-service-account
+                      serviceAccount: v1-secret-accessor-service-account
+                      securityContext: {}
+                      imagePullSecrets:
+                        - name: docker-secret
+                      schedulerName: default-scheduler
+              successfulJobsHistoryLimit: 3
+              failedJobsHistoryLimit: 1
+            status: {}
+          - metadata:
+              name: fetch-tweets-budlight-business
+              namespace: development
+              uid: 66564788-6a2d-4e8e-9d28-663254c1ccf4
+              resourceVersion: '23576160'
+              creationTimestamp: 2022-04-28T15:38:30.000Z
+              managedFields:
+                - manager: unknown
+                  operation: Update
+                  apiVersion: batch/v1
+                  time: 2022-04-28T15:38:30.000Z
+                  fieldsType: FieldsV1
+                  fieldsV1:
+                    f:spec:
+                      f:concurrencyPolicy: {}
+                      f:failedJobsHistoryLimit: {}
+                      f:jobTemplate:
+                        f:spec:
+                          f:template:
+                            f:spec:
+                              f:containers:
+                                k:{"name":"v1-data-collector"}:
+                                  .: {}
+                                  f:args: {}
+                                  f:command: {}
+                                  f:envFrom: {}
+                                  f:image: {}
+                                  f:imagePullPolicy: {}
+                                  f:name: {}
+                                  f:resources: {}
+                                  f:terminationMessagePath: {}
+                                  f:terminationMessagePolicy: {}
+                              f:dnsPolicy: {}
+                              f:imagePullSecrets:
+                                .: {}
+                                k:{"name":"docker-secret"}:
+                                  .: {}
+                                  f:name: {}
+                              f:restartPolicy: {}
+                              f:schedulerName: {}
+                              f:securityContext: {}
+                              f:serviceAccount: {}
+                              f:serviceAccountName: {}
+                              f:terminationGracePeriodSeconds: {}
+                      f:schedule: {}
+                      f:successfulJobsHistoryLimit: {}
+                      f:suspend: {}
+            spec:
+              schedule: 0 */6 * * *
+              concurrencyPolicy: Allow
+              suspend: false
+              jobTemplate:
+                metadata:
+                  creationTimestamp: null
+                spec:
+                  template:
+                    metadata:
+                      creationTimestamp: null
+                    spec:
+                      containers:
+                        - name: v1-data-collector
+                          image: thinkdeeptech/collect-data:latest
+                          command:
+                            - node
+                          args:
+                            - src/collect-data.mjs
+                            - '--entity-name=BudLight'
+                            - '--entity-type=BUSINESS'
+                            - '--operation-type=fetch-tweets'
+                          envFrom:
+                            - secretRef:
+                                name: v1-deep-microservice-collection-secret
+                            - secretRef:
+                                name: deep-kafka-secret
+                          resources: {}
+                          terminationMessagePath: /dev/termination-log
+                          terminationMessagePolicy: File
+                          imagePullPolicy: Always
+                      restartPolicy: Never
+                      terminationGracePeriodSeconds: 30
+                      dnsPolicy: ClusterFirst
+                      serviceAccountName: v1-secret-accessor-service-account
+                      serviceAccount: v1-secret-accessor-service-account
+                      securityContext: {}
+                      imagePullSecrets:
+                        - name: docker-secret
+                      schedulerName: default-scheduler
+              successfulJobsHistoryLimit: 3
+              failedJobsHistoryLimit: 1
+            status: {}
+        `);
+
       let v1Client;
       let batchFunctionName;
       let boundV1Function;
@@ -1597,10 +1788,6 @@ describe('k8s-api', () => {
         it('should return a set', () => {
             const actual = subject._groupVersions('Event');
             expect(actual.constructor.name).to.equal('Set');
-        })
-
-        it('should throw an error if the kind does not map to a group', () => {
-            expect(() => subject._groupVersions('NonExistantKind')).to.throw(ErrorNotFound);
         })
 
         it('should return the registered groups for a given kind', () => {

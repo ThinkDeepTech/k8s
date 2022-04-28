@@ -1,5 +1,5 @@
 import k8s from '@kubernetes/client-node';
-import { k8sManifest, stringify } from '@thinkdeep/k8s-manifest';
+import { k8sManifest } from '@thinkdeep/k8s-manifest';
 import {ErrorNotFound} from './error/error-not-found.mjs'
 import { normalizeKind } from './normalize-kind.mjs';
 
@@ -12,6 +12,8 @@ class K8sApi {
         this._kindToApiClients = {};
         this._kindToGroupVersion = {};
         this._groupVersionToPreferredVersion = {};
+
+        this._kindApiVersionMemo = {};
     }
 
     /**
@@ -142,7 +144,11 @@ class K8sApi {
             try {
                 const {response: {body}} = await fetchResources.bind(apiClient)();
 
-                callback(apiClient, k8sManifest(body));
+                const manifest = k8sManifest( this._configuredManifestObject(body) );
+
+                this._memoizeManifestMetadata(manifest);
+
+                callback(apiClient, manifest);
             } catch (e) {
 
                 if (!e?.response?.statusCode || e?.response?.statusCode !== 404) {
@@ -153,14 +159,7 @@ class K8sApi {
     }
 
     _groupVersions(kind) {
-
-        const groupVersions = this._kindToGroupVersion[normalizeKind(kind).toLowerCase()] || new Set();
-
-        if (groupVersions.size <= 0) {
-            throw new ErrorNotFound(`The kind ${kind} didn't have any registered group versions. Are you sure you're using an accepted kind?`);
-        }
-
-        return groupVersions;
+        return this._kindToGroupVersion[normalizeKind(kind).toLowerCase()] || new Set();
     }
 
     _clientApis(kind) {
@@ -178,17 +177,18 @@ class K8sApi {
         return client;
     }
 
-    _preferredVersions(groupVersions) {
+    _preferredApiVersions(groupVersions) {
 
         /**
          * A given kind can be part of multiple groups. Therefore, there are multiple preferred versions.
          */
-        let preferredVersions = [];
+        let preferredVersions = new Set();
         for (const groupVersion of groupVersions) {
             const registeredPreferredVersion = this._groupVersionToPreferredVersion[groupVersion.toLowerCase()] || '';
-            preferredVersions.push(registeredPreferredVersion);
+            preferredVersions.add(registeredPreferredVersion);
         }
-        return new Set(preferredVersions.filter((val) => !!val));
+
+        return [...preferredVersions].filter((val) => !!val);
     }
 
     _registeredKind(kind) {
@@ -203,21 +203,11 @@ class K8sApi {
      * @param {String} kind K8s Kind.
      * @returns Preferred api versions.
      */
-    preferredVersions(kind) {
-
-        if (!this._registeredKind(kind)) {
-            throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
-        }
+    preferredApiVersions(kind) {
 
         const kindGroups = this._groupVersions(kind);
 
-        const targetVersions = this._preferredVersions(kindGroups);
-
-        if (targetVersions.size <= 0) {
-            throw new ErrorNotFound(`The kind ${kind} didn't have registered preferred versions. Are you sure you're using an accepted kind?`);
-        }
-
-        return targetVersions;
+        return this._preferredApiVersions(kindGroups);
     }
 
     /**
@@ -236,7 +226,11 @@ class K8sApi {
 
                 const received = await strategy();
 
-                targets.push( this._configuredManifest( k8sManifest(received.response.body)) );
+                const returnedManifest = k8sManifest( this._configuredManifestObject(received.response.body));
+
+                this._memoizeManifestMetadata(returnedManifest);
+
+                targets.push( returnedManifest );
             } catch (e) {
 
                 if (!e?.response?.statusCode || e?.response?.statusCode !== 409) {
@@ -321,7 +315,13 @@ class K8sApi {
             throw new ErrorNotFound(`The resource of kind ${kind} with name ${name} ${namespaceMessage} wasn't found.`);
         }
 
-        return results.map((received) => this._configuredManifest( k8sManifest(received.response.body)))[0];
+        return results.map((received) => {
+            const manifest = k8sManifest( this._configuredManifestObject(received.response.body))
+
+            this._memoizeManifestMetadata(manifest);
+
+            return manifest;
+        })[0];
     }
 
     /**
@@ -405,7 +405,11 @@ class K8sApi {
 
                 const received = responses[0];
 
-                return this._configuredManifest( k8sManifest(received.response.body) );
+                const returnedManifest = k8sManifest( this._configuredManifestObject(received.response.body) );
+
+                this._memoizeManifestMetadata(returnedManifest);
+
+                return returnedManifest;
         }));
     }
 
@@ -490,13 +494,17 @@ class K8sApi {
                 throw new Error(`The API response didn't include a valid body. Received: ${body}`);
             }
 
-            const kindList = k8sManifest(body);
-
-            console.log(`Listed manifest:\n\n${stringify(kindList)}`);
+            const kindList = k8sManifest( this._configuredManifestObject(body) );
 
             for (let i = 0; i < kindList.items.length; i++) {
                 kindList.items[i].apiVersion = kindList.apiVersion;
                 kindList.items[i].kind = normalizeKind(kindList.items[i]?.constructor?.name || '');
+            }
+
+            this._memoizeManifestMetadata(kindList);
+
+            if (Array.isArray(kindList.items) && kindList.items.length > 0) {
+                this._memoizeManifestMetadata(kindList.items[0]);
             }
 
             return kindList;
@@ -612,13 +620,39 @@ class K8sApi {
         }))).filter((value) => !!value);
     }
 
-    _configuredManifest(configuration) {
+    _configuredManifestObject(configuration) {
 
-        if (!configuration.kind) {
-            configuration.kind = normalizeKind(configuration.constructor.name);
+        if (!configuration) {
+            throw new Error(`The configuration must be defined.`);
+        }
+
+        if (!configuration.apiVersion) {
+            const kind = configuration.kind || '';
+            configuration.apiVersion = this.preferredApiVersions(kind)[0] || this._memoizedApiVersions(kind)[0] || '';
         }
 
         return configuration;
+    }
+
+    _memoizeManifestMetadata(manifest) {
+        const kind = manifest.kind || '';
+
+        if (!kind) {
+            throw new Error(`The kind must be defined`);
+        }
+
+        if (!this._kindApiVersionMemo[kind.toLowerCase()]) {
+            this._kindApiVersionMemo[kind.toLowerCase()] = new Set();
+        }
+
+        const apiVersion = manifest.apiVersion || '';
+        if (!!apiVersion && !this._kindApiVersionMemo[kind.toLowerCase()].has(apiVersion)) {
+            this._kindApiVersionMemo[kind.toLowerCase()].add(apiVersion);
+        }
+    }
+
+    _memoizedApiVersions(kind) {
+        return [...this._kindApiVersionMemo[kind.toLowerCase()]] || [];
     }
 };
 

@@ -38,8 +38,8 @@ class K8sClient {
      * @param {String} kind K8s kind.
      * @returns Array of preferred api versions.
      */
-    preferredVersions(kind) {
-        return this._api.preferredVersions(kind);
+    preferredApiVersions(kind) {
+        return this._api.preferredApiVersions(kind);
     }
 
     /**
