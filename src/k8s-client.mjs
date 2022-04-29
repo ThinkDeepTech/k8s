@@ -31,12 +31,38 @@ class K8sClient {
     }
 
     /**
+     * Set the default namespace to use.
+     *
+     * Usage:
+     *
+     * const client = await new K8sClient().init();
+     *
+     * client.defaultNamespace = 'development';
+     *
+     * //...
+     *
+     * @param {string} [val = 'default'] Default namespace to use.
+     */
+    set defaultNamespace(val = 'default') {
+
+        this._api.defaultNamespace = val;
+    }
+
+    /**
+     * Get the default namespace in use.
+     * @returns Default namespace string || 'default'.
+     */
+    get defaultNamespace() {
+        return this._api.defaultNamespace || 'default';
+    }
+
+    /**
      * Get the cluster preferred api versions.
      *
      * NOTE: One kind can be part of multiple groups. Therefore, multiple preferred versions can exist.
      *
      * @param {String} kind K8s kind.
-     * @returns Array of preferred api versions.
+     * @returns Preferred api versions or [] if none exist.
      */
     preferredApiVersions(kind) {
         return this._api.preferredApiVersions(kind);

@@ -25,6 +25,9 @@ Assuming the role binding linking the necessary role and service account has the
 
     const client = await new K8sClient(config).init();
 
+    // Set default namespace fallback to whatever you desire or use the default provided 'default'.
+    client.defaultNamespace = 'development';
+
     const options = {
         name: 'dynamic-cron-job',
         namespace: 'production',

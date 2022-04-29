@@ -43,6 +43,7 @@ describe('k8s-api', () => {
             `),
             [`${k8s.CoreV1Api.name}`]: k8sManifest(`
                 kind: APIResourceList
+                apiVersion: v1
                 groupVersion: v1
                 resources:
                   - name: pods
@@ -465,10 +466,10 @@ describe('k8s-api', () => {
                       - get
                       - patch
                       - update
-                apiVersion: v1
             `),
             [`${k8s.BatchV1Api.name}`]: k8sManifest(`
               kind: APIResourceList
+              apiVersion: v1
               groupVersion: batch/v1
               resources:
                 - name: cronjobs
@@ -518,6 +519,7 @@ describe('k8s-api', () => {
             `),
             [`${k8s.AppsV1Api.name}`]: k8sManifest(`
               kind: APIResourceList
+              apiVersion: v1
               groupVersion: apps/v1
               resources:
                 - name: deployments
@@ -980,6 +982,9 @@ describe('k8s-api', () => {
             await expect(subject.read(kind, name, namespace)).to.be.rejectedWith(ErrorNotFound);
         })
 
+        it('should memoize the encountered manifests', async () => {
+            // TODO
+        })
     })
 
     describe('_broadcastReadStrategy', () => {
@@ -1138,6 +1143,10 @@ describe('k8s-api', () => {
 
         await expect(subject.createAll([manifestCronJob, manifestDeployment, manifestService])).not.to.be.rejected;
       })
+
+      it('should memoize the returned manifest', async () => {
+          // TODO
+      })
     })
 
     describe('_creationStrategy', () => {
@@ -1280,6 +1289,10 @@ describe('k8s-api', () => {
 
         await expect(subject.patchAll([manifestCronJob, manifestDeployment, manifestService])).to.be.rejectedWith(ErrorNotFound);
       })
+
+      it('should memoize the encountered manifests', async () => {
+          // TODO
+      })
     })
 
     describe('_broadcastPatchStrategy', () => {
@@ -1369,22 +1382,6 @@ describe('k8s-api', () => {
     })
 
     describe('listAll', () => {
-
-      const manifestCronJobV1 = k8sManifest(`
-        apiVersion: batch/v1
-        kind: CronJob
-        metadata:
-          namespace: "default"
-          name: "v1-cron-job"
-      `);
-
-      const manifestCronJobV1beta1 = k8sManifest(`
-        apiVersion: batch/v1beta1
-        kind: CronJob
-        metadata:
-          namespace: "default"
-          name: "beta-cron-job"
-      `);
 
       const cronJobList = k8sManifest(`
         kind: CronJobList
@@ -1588,22 +1585,22 @@ describe('k8s-api', () => {
       let boundV1beta1Function;
       beforeEach(async () => {
 
-        batchFunctionName = 'createNamespacedCronJob';
+        batchFunctionName = 'listNamespacedCronJob';
 
         v1Client = apiClient(k8s.BatchV1Api, apiClients);
         boundV1Function = sinon.stub();
         boundV1Function.returns(Promise.resolve({
           response: {
-            body: objectify(manifestCronJobV1)
+            body: objectify(cronJobList)
           }
         }));
         v1Client[batchFunctionName].bind = sinon.stub().returns(boundV1Function);
 
         v1beta1Client = apiClient(k8s.BatchV1beta1Api, apiClients);
         boundV1beta1Function = sinon.stub();
-        boundV1beta1Function.returns(Promise.resolve({
+        boundV1beta1Function.returns(Promise.reject({
           response: {
-            body: objectify(manifestCronJobV1beta1)
+            statusCode: 404
           }
         }));
         v1beta1Client[batchFunctionName].bind = sinon.stub().returns(boundV1beta1Function);
@@ -1613,27 +1610,98 @@ describe('k8s-api', () => {
 
 
       it('should reject unknown kinds', async () => {
-          await expect(subject.listAll('UnknownKind', 'UnknownNamespace')).to.be.rejectedWith(ErrorNotFound);
+          await expect(subject.listAll('UnknownKind', 'default')).to.be.rejectedWith(ErrorNotFound);
       })
 
       it('should assign api version to returned resources', async () => {
-        // TODO
+        const result = await subject.listAll('CronJob', 'default');
+
+        for (const cronJob of cronJobList.items) {
+          expect(cronJob.apiVersion).to.equal(undefined);
+        }
+        expect(cronJobList.items.length).to.be.greaterThan(0);
+
+        const actualCronJobList = result[0];
+        for (const cronJob of actualCronJobList.items) {
+          expect(cronJob.apiVersion).to.equal(cronJobList.apiVersion);
+        }
+        expect(actualCronJobList.items.length).to.be.greaterThan(0);
       })
 
 
       it('should assign kind to returned resources', async () => {
+        const result = await subject.listAll('CronJob', 'default');
 
+        for (const cronJob of cronJobList.items) {
+          expect(cronJob.kind).to.equal(undefined);
+        }
+        expect(cronJobList.items.length).to.be.greaterThan(0);
+
+        const actualCronJobList = result[0];
+        for (const cronJob of actualCronJobList.items) {
+          expect(cronJob.kind).to.equal(normalizeKind(cronJob.constructor.name));
+        }
+        expect(actualCronJobList.items.length).to.be.greaterThan(0);
+      })
+
+      it('should memoize the encountered list and list item manifests', async () => {
+
+        const initialNumMemos = Object.keys(subject._kindApiVersionMemo).length;
+
+        await subject.listAll('CronJob', 'default');
+
+        const actualNumMemos = Object.keys(subject._kindApiVersionMemo).length;
+
+        // One list type is added, one item type is added.
+        expect(actualNumMemos).to.equal(initialNumMemos + 1 + 1);
       })
 
     })
 
     describe('_broadcastListStrategy', () => {
+
+      let v1Client;
+      let batchFunctionName;
+      let boundV1Function;
+      let v1beta1Client;
+      let boundV1beta1Function;
       beforeEach(async () => {
+
+        batchFunctionName = 'listNamespacedCronJob';
+
+        v1Client = apiClient(k8s.BatchV1Api, apiClients);
+        boundV1Function = sinon.stub();
+        boundV1Function.returns(Promise.resolve({
+          response: {
+            body: {}
+          }
+        }));
+        v1Client[batchFunctionName].bind = sinon.stub().returns(boundV1Function);
+
+        v1beta1Client = apiClient(k8s.BatchV1beta1Api, apiClients);
+        boundV1beta1Function = sinon.stub();
+        boundV1beta1Function.returns(Promise.resolve({
+          response: {
+            body: {}
+          }
+        }));
+        v1beta1Client[batchFunctionName].bind = sinon.stub().returns(boundV1beta1Function);
+
         await subject.init(kubeConfig, apis);
       })
 
       it('should reject unknown kinds', () => {
           expect(() => subject._broadcastListStrategy('UnknownKind', 'UnknownNamespace')).to.throw(ErrorNotFound);
+      })
+
+      it('should broadcast the list operation over all relevant apis', async () => {
+
+        const strategy = subject._broadcastListStrategy('CronJob', 'default');
+
+        await strategy();
+
+        expect(boundV1Function).to.have.been.calledOnce;
+        expect(boundV1beta1Function).to.have.been.calledOnce;
       })
     })
 
@@ -1648,7 +1716,7 @@ describe('k8s-api', () => {
       })
 
       it('should return a non-namespaced function if one exists', () => {
-          const api = subject._clientApi('v1');
+          const api = apiClient(k8s.CoreV1Api, apiClients);
           const kind = 'Namespace';
           const strategy = subject._listClusterObjectsStrategy(api, kind, 'development');
           expect(strategy.name).to.include(`list${kind}`);
@@ -1656,7 +1724,7 @@ describe('k8s-api', () => {
       })
 
       it('should return a namespaced function if one exists and the namespace is defined', () => {
-          const api = subject._clientApi('v1');
+          const api = apiClient(k8s.CoreV1Api, apiClients);
           const kind = 'Service';
           const strategy = subject._listClusterObjectsStrategy(api, kind, 'development');
           expect(strategy.name).to.include(`listNamespaced${kind}`);
@@ -1669,6 +1737,8 @@ describe('k8s-api', () => {
           expect(strategy.name).to.include(`list${kind}ForAllNamespaces`);
       })
     })
+
+
 
     describe('_deletionStrategy', () => {
 
@@ -1683,6 +1753,69 @@ describe('k8s-api', () => {
           };
 
           expect(() => subject._deletionStrategy(manifest)).to.throw(ErrorNotFound);
+      })
+    })
+
+    describe('deleteAll', () => {
+      const manifestCronJob = k8sManifest(`
+        apiVersion: batch/v1
+        kind: CronJob
+        metadata:
+          namespace: "default"
+      `);
+
+      const manifestDeployment = k8sManifest(`
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          namespace: "default"
+      `);
+
+      const manifestService = k8sManifest(`
+        apiVersion: v1
+        kind: Service
+        metadata:
+          namespace: "default"
+      `);
+
+      let batchClient;
+      let batchFunctionName;
+      let boundBatchFunction;
+      let appsClient;
+      let appsFunctionName;
+      let boundAppsFunction;
+      let coreClient;
+      let coreFunctionName;
+      let boundCoreFunction;
+      beforeEach(async () => {
+
+        batchClient = apiClient(k8s.BatchV1Api, apiClients);
+        batchFunctionName = 'deleteNamespacedCronJob';
+        boundBatchFunction = sinon.stub();
+        boundBatchFunction.returns(Promise.resolve());
+        batchClient[batchFunctionName].bind = sinon.stub().returns(boundBatchFunction);
+
+        appsClient = apiClient(k8s.AppsV1Api, apiClients);
+        appsFunctionName = 'deleteNamespacedDeployment';
+        boundAppsFunction = sinon.stub();
+        boundAppsFunction.returns(Promise.resolve());
+        appsClient[appsFunctionName].bind = sinon.stub().returns(boundAppsFunction);
+
+        coreClient = apiClient(k8s.CoreV1Api, apiClients);
+        coreFunctionName = 'deleteNamespacedService';
+        boundCoreFunction = sinon.stub();
+        boundCoreFunction.returns(Promise.resolve());
+        coreClient[coreFunctionName].bind = sinon.stub().returns(boundCoreFunction);
+
+        await subject.init(kubeConfig, apis);
+      })
+
+      it('should delete all of the specified manifests', async () => {
+        await subject.deleteAll([manifestCronJob, manifestDeployment, manifestService]);
+
+        expect(boundBatchFunction).to.be.calledOnce;
+        expect(boundAppsFunction).to.be.calledOnce;
+        expect(boundCoreFunction).to.be.calledOnce;
       })
     })
 
@@ -1922,5 +2055,10 @@ describe('k8s-api', () => {
 
             await expect(subject._forEachApi(kubeConfig, resourceFunctionName, (_, __) => { }, apis)).to.be.rejected;
         })
+
+        it('should memoize the encountered manifests', async () => {
+            // TODO
+        })
+
     })
 })
