@@ -1925,6 +1925,50 @@ describe('k8s-api', () => {
       })
     })
 
+    describe('_configuredManifestObject', () => {
+
+      beforeEach(async () => {
+        await subject.init(kubeConfig, apis);
+      })
+
+      it('should use the preferred api version if one is not found', () => {
+          const manifest = {
+            kind: 'CronJob'
+          };
+
+          const expectedPreferredApiVersion = subject.preferredApiVersions(manifest.kind)[0];
+
+          const configuredManifest = subject._configuredManifestObject(manifest);
+          const actualPreferredApiVersion = configuredManifest.apiVersion;
+
+          expect(expectedPreferredApiVersion).to.equal(actualPreferredApiVersion);
+      })
+
+      it.only('should use the observed api version if the preferred version is not found', () => {
+        const manifest = {
+          kind: 'CronJob'
+        };
+
+        subject._kindToGroupVersion[normalizeKind(manifest.kind).toLowerCase()] = new Set();
+
+        subject._groupVersionToPreferredVersion['batch/v1'] = undefined;
+
+        const preferredApiVersion = subject.preferredApiVersions(manifest.kind)[0];
+
+        expect(preferredApiVersion).to.equal(undefined);
+
+        const configuredManifest = subject._configuredManifestObject(manifest);
+
+        const actualApiVersion = subject._memoizedApiVersions(manifest.kind)[0];
+
+        expect(actualApiVersion).to.equal(configuredManifest.apiVersion);
+      })
+
+      it('should use the group version if neither the preferred version nor observed version is found', () => {
+        // TODO
+      })
+    })
+
     describe('_registeredKind', () => {
         beforeEach(async () => {
             await subject.init(kubeConfig, apis);

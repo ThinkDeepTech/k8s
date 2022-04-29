@@ -644,7 +644,6 @@ class K8sApi {
         }))).filter((value) => !!value);
     }
 
-    // TODO
     _configuredManifestObject(configuration) {
 
         if (!configuration) {
@@ -672,19 +671,26 @@ class K8sApi {
             throw new Error(`The kind must be defined`);
         }
 
-        if (!this._kindApiVersionMemo[kind.toLowerCase()]) {
-            this._kindApiVersionMemo[kind.toLowerCase()] = new Set();
+        const _kind = kind.toLowerCase();
+        if (!this._memoizedApiVersions(_kind)) {
+            this._kindApiVersionMemo[_kind] = new Set();
         }
 
         const apiVersion = manifest.apiVersion || '';
-        if (!!apiVersion && !this._kindApiVersionMemo[kind.toLowerCase()].has(apiVersion)) {
-            this._kindApiVersionMemo[kind.toLowerCase()].add(apiVersion);
+        if (!!apiVersion && !this._memoizedApiVersions(_kind).includes(apiVersion)) {
+            this._kindApiVersionMemo[_kind].add(apiVersion);
         }
     }
 
     // TODO
     _memoizedApiVersions(kind) {
-        return [...this._kindApiVersionMemo[kind.toLowerCase()]] || [];
+
+        const _kind = kind.toLowerCase();
+        if (!this._kindApiVersionMemo[_kind]) {
+            this._kindApiVersionMemo[_kind] = new Set();
+        }
+
+        return [...this._kindApiVersionMemo[_kind]] || [];
     }
 };
 
