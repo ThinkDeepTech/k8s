@@ -1858,6 +1858,73 @@ describe('k8s-api', () => {
       })
     })
 
+    describe('_handleStrategyExecution', () => {
+
+      let strategies;
+      beforeEach(() => {
+        strategies = [
+          sinon.stub().returns(Promise.resolve({
+            response: {
+              body: {
+                apiVersion: 'batch/v1',
+                kind: 'Job'
+              }
+            }
+          })),
+          sinon.stub().returns(Promise.reject({
+            response: {
+              statusCode: 404
+            }
+          })),
+          sinon.stub().returns(Promise.resolve({
+            response: {
+              body: {
+                apiVersion: 'batch/v1beta1',
+                kind: 'CronJob'
+              }
+            }
+          }))
+        ];
+      })
+
+      it('should execute all the provided strategies', async () => {
+        await subject._handleStrategyExecution(strategies);
+
+        for (const strategy of strategies) {
+          expect(strategy).to.have.been.calledOnce;
+        }
+        expect(strategies.length).to.be.greaterThan(0);
+      })
+
+      it('should filter out useless values', async () => {
+        const actuals = await subject._handleStrategyExecution(strategies);
+
+        // One strategy throws a 404 resulting in null.
+        expect(actuals.length).to.equal(strategies.length - 1)
+      })
+
+      it('should throw an error if a non-request error is encountered', async () => {
+
+        strategies[1].returns(Promise.reject());
+
+        await expect(subject._handleStrategyExecution(strategies)).to.be.rejected;
+      })
+
+      it('should throw an error if a non-404 status code is encountered', async () => {
+        strategies[1].returns(Promise.reject({
+          response: {
+            statusCode: 401
+          }
+        }));
+
+        await expect(subject._handleStrategyExecution(strategies)).to.be.rejected;
+      })
+
+      it('should not throw an error if a 404 status code is encountered', async () => {
+        await expect(subject._handleStrategyExecution(strategies)).not.to.be.rejected;
+      })
+    })
+
     describe('_registeredKind', () => {
         beforeEach(async () => {
             await subject.init(kubeConfig, apis);

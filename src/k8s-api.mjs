@@ -629,7 +629,6 @@ class K8sApi {
         }
     }
 
-    // TODO
     async _handleStrategyExecution(strategies) {
         return (await Promise.all(strategies.map(async (strategy) =>  {
             try {
