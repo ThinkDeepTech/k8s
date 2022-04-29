@@ -586,18 +586,6 @@ class K8sApi {
      * @param {Array<any>} manifests K8s javascript client objects.
      */
     deleteAll(manifests) {
-
-        // Validate kinds are acceptable before actually executing deletes.
-        for (const manifest of manifests) {
-            if (!this._registeredKind(manifest.kind)) {
-                throw new ErrorNotFound(`Kind ${manifest.kind} was not found in the API. Are you sure it's correctly spelled?`);
-            }
-
-            if (!manifest.apiVersion) {
-                throw new Error(`The api version wasn't defined.`);
-            }
-        }
-
         return Promise.all(manifests.map((manifest) => this._deletionStrategy(manifest)()));
     }
 
