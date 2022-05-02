@@ -660,10 +660,9 @@ class K8sApi {
 
     _inferApiVersion(kind) {
         const _kind = normalizeKind(kind).toLowerCase();
-        return this.preferredApiVersions(_kind)[0] || this._memoizedApiVersions(_kind)[0] || '';
+        return this.preferredApiVersions(_kind)[0] || this._memoizedApiVersions(_kind)[0] || null;
     }
 
-    // TODO
     _memoizeManifestMetadata(manifest) {
         const kind = manifest.kind || '';
 
@@ -682,7 +681,6 @@ class K8sApi {
         }
     }
 
-    // TODO
     _memoizedApiVersions(kind) {
 
         const _kind = kind.toLowerCase();

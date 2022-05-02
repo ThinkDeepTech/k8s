@@ -1927,8 +1927,72 @@ describe('k8s-api', () => {
 
     describe('_configuredManifestObject', () => {
 
+      const manifestCronJob = k8sManifest(`
+        apiVersion: batch/v1
+        kind: CronJob
+        metadata:
+          namespace: "default"
+      `);
+
+      const manifestDeployment = k8sManifest(`
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          namespace: "default"
+      `);
+
+      const manifestService = k8sManifest(`
+        apiVersion: v1
+        kind: Service
+        metadata:
+          namespace: "default"
+      `);
+
+      let batchClient;
+      let batchFunctionName;
+      let boundBatchFunction;
+      let appsClient;
+      let appsFunctionName;
+      let boundAppsFunction;
+      let coreClient;
+      let coreFunctionName;
+      let boundCoreFunction;
       beforeEach(async () => {
+
+        batchClient = apiClient(k8s.BatchV1Api, apiClients);
+        batchFunctionName = 'createNamespacedCronJob';
+        boundBatchFunction = sinon.stub();
+        boundBatchFunction.returns(Promise.resolve({
+          response: {
+            body: objectify(manifestCronJob)
+          }
+        }));
+        batchClient[batchFunctionName].bind = sinon.stub().returns(boundBatchFunction);
+
+        appsClient = apiClient(k8s.AppsV1Api, apiClients);
+        appsFunctionName = 'createNamespacedDeployment';
+        boundAppsFunction = sinon.stub();
+        boundAppsFunction.returns(Promise.resolve({
+          response: {
+            body: objectify(manifestDeployment)
+          }
+        }));
+        appsClient[appsFunctionName].bind = sinon.stub().returns(boundAppsFunction);
+
+        coreClient = apiClient(k8s.CoreV1Api, apiClients);
+        coreFunctionName = 'createNamespacedService';
+        boundCoreFunction = sinon.stub();
+        boundCoreFunction.returns(Promise.resolve({
+          response: {
+            body: objectify(manifestService)
+          }
+        }));
+        coreClient[coreFunctionName].bind = sinon.stub().returns(boundCoreFunction);
+
         await subject.init(kubeConfig, apis);
+
+        // Trigger memoization of each type
+        await subject.createAll([manifestCronJob, manifestDeployment, manifestService]);
       })
 
       it('should use the preferred api version if one is not found', () => {
@@ -1944,7 +2008,8 @@ describe('k8s-api', () => {
           expect(expectedPreferredApiVersion).to.equal(actualPreferredApiVersion);
       })
 
-      it.only('should use the observed api version if the preferred version is not found', () => {
+      it('should use the observed api version if the preferred version is not found', () => {
+
         const manifest = {
           kind: 'CronJob'
         };
@@ -1965,7 +2030,24 @@ describe('k8s-api', () => {
       })
 
       it('should use the group version if neither the preferred version nor observed version is found', () => {
-        // TODO
+        const manifest = {
+          kind: 'CronJob',
+          groupVersion: 'batch/v1'
+        };
+
+        subject._kindToGroupVersion[normalizeKind(manifest.kind).toLowerCase()] = new Set();
+
+        subject._groupVersionToPreferredVersion['batch/v1'] = undefined;
+
+        subject._kindApiVersionMemo['cronjob'] = undefined;
+
+        const inferredVersion = subject._inferApiVersion(manifest.kind);
+
+        expect(inferredVersion).to.equal(null);
+
+        const configuredManifest = subject._configuredManifestObject(manifest);
+
+        expect(manifest.groupVersion).to.equal(configuredManifest.apiVersion);
       })
     })
 
