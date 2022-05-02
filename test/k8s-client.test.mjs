@@ -782,8 +782,278 @@ describe('k8s-client', () => {
 
     describe('getAll', () => {
 
-        it('should flatten the resource list', async () => {
+      const kindList = k8sManifest(`
+          kind: CronJobList
+          apiVersion: batch/v1beta1
+          metadata:
+            resourceVersion: '23576181'
+          items:
+            - metadata:
+                name: fetch-tweets-apple-business
+                namespace: development
+                uid: ffc919e3-8abd-458a-9123-792c31784f4b
+                resourceVersion: '23576152'
+                creationTimestamp: 2022-04-28T15:38:20.000Z
+                managedFields:
+                  - manager: unknown
+                    operation: Update
+                    apiVersion: batch/v1
+                    time: 2022-04-28T15:38:20.000Z
+                    fieldsType: FieldsV1
+                    fieldsV1:
+                      f:spec:
+                        f:concurrencyPolicy: {}
+                        f:failedJobsHistoryLimit: {}
+                        f:jobTemplate:
+                          f:spec:
+                            f:template:
+                              f:spec:
+                                f:containers:
+                                  k:{"name":"v1-data-collector"}:
+                                    .: {}
+                                    f:args: {}
+                                    f:command: {}
+                                    f:envFrom: {}
+                                    f:image: {}
+                                    f:imagePullPolicy: {}
+                                    f:name: {}
+                                    f:resources: {}
+                                    f:terminationMessagePath: {}
+                                    f:terminationMessagePolicy: {}
+                                f:dnsPolicy: {}
+                                f:imagePullSecrets:
+                                  .: {}
+                                  k:{"name":"docker-secret"}:
+                                    .: {}
+                                    f:name: {}
+                                f:restartPolicy: {}
+                                f:schedulerName: {}
+                                f:securityContext: {}
+                                f:serviceAccount: {}
+                                f:serviceAccountName: {}
+                                f:terminationGracePeriodSeconds: {}
+                        f:successfulJobsHistoryLimit: {}
+                        f:suspend: {}
+                  - manager: unknown
+                    operation: Update
+                    apiVersion: batch/v1beta1
+                    time: 2022-04-28T15:38:30.000Z
+                    fieldsType: FieldsV1
+                    fieldsV1:
+                      f:spec:
+                        f:schedule: {}
+              spec:
+                schedule: 0 */12 * * *
+                concurrencyPolicy: Allow
+                suspend: false
+                jobTemplate:
+                  metadata:
+                    creationTimestamp: null
+                  spec:
+                    template:
+                      metadata:
+                        creationTimestamp: null
+                      spec:
+                        containers:
+                          - name: v1-data-collector
+                            image: thinkdeeptech/collect-data:latest
+                            command:
+                              - node
+                            args:
+                              - src/collect-data.mjs
+                              - '--entity-name=Apple'
+                              - '--entity-type=BUSINESS'
+                              - '--operation-type=fetch-tweets'
+                            envFrom:
+                              - secretRef:
+                                  name: v1-deep-microservice-collection-secret
+                              - secretRef:
+                                  name: deep-kafka-secret
+                            resources: {}
+                            terminationMessagePath: /dev/termination-log
+                            terminationMessagePolicy: File
+                            imagePullPolicy: Always
+                        restartPolicy: Never
+                        terminationGracePeriodSeconds: 30
+                        dnsPolicy: ClusterFirst
+                        serviceAccountName: v1-secret-accessor-service-account
+                        serviceAccount: v1-secret-accessor-service-account
+                        securityContext: {}
+                        imagePullSecrets:
+                          - name: docker-secret
+                        schedulerName: default-scheduler
+                successfulJobsHistoryLimit: 3
+                failedJobsHistoryLimit: 1
+              status: {}
+            - metadata:
+                name: fetch-tweets-budlight-business
+                namespace: development
+                uid: 66564788-6a2d-4e8e-9d28-663254c1ccf4
+                resourceVersion: '23576160'
+                creationTimestamp: 2022-04-28T15:38:30.000Z
+                managedFields:
+                  - manager: unknown
+                    operation: Update
+                    apiVersion: batch/v1
+                    time: 2022-04-28T15:38:30.000Z
+                    fieldsType: FieldsV1
+                    fieldsV1:
+                      f:spec:
+                        f:concurrencyPolicy: {}
+                        f:failedJobsHistoryLimit: {}
+                        f:jobTemplate:
+                          f:spec:
+                            f:template:
+                              f:spec:
+                                f:containers:
+                                  k:{"name":"v1-data-collector"}:
+                                    .: {}
+                                    f:args: {}
+                                    f:command: {}
+                                    f:envFrom: {}
+                                    f:image: {}
+                                    f:imagePullPolicy: {}
+                                    f:name: {}
+                                    f:resources: {}
+                                    f:terminationMessagePath: {}
+                                    f:terminationMessagePolicy: {}
+                                f:dnsPolicy: {}
+                                f:imagePullSecrets:
+                                  .: {}
+                                  k:{"name":"docker-secret"}:
+                                    .: {}
+                                    f:name: {}
+                                f:restartPolicy: {}
+                                f:schedulerName: {}
+                                f:securityContext: {}
+                                f:serviceAccount: {}
+                                f:serviceAccountName: {}
+                                f:terminationGracePeriodSeconds: {}
+                        f:schedule: {}
+                        f:successfulJobsHistoryLimit: {}
+                        f:suspend: {}
+              spec:
+                schedule: 0 */6 * * *
+                concurrencyPolicy: Allow
+                suspend: false
+                jobTemplate:
+                  metadata:
+                    creationTimestamp: null
+                  spec:
+                    template:
+                      metadata:
+                        creationTimestamp: null
+                      spec:
+                        containers:
+                          - name: v1-data-collector
+                            image: thinkdeeptech/collect-data:latest
+                            command:
+                              - node
+                            args:
+                              - src/collect-data.mjs
+                              - '--entity-name=BudLight'
+                              - '--entity-type=BUSINESS'
+                              - '--operation-type=fetch-tweets'
+                            envFrom:
+                              - secretRef:
+                                  name: v1-deep-microservice-collection-secret
+                              - secretRef:
+                                  name: deep-kafka-secret
+                            resources: {}
+                            terminationMessagePath: /dev/termination-log
+                            terminationMessagePolicy: File
+                            imagePullPolicy: Always
+                        restartPolicy: Never
+                        terminationGracePeriodSeconds: 30
+                        dnsPolicy: ClusterFirst
+                        serviceAccountName: v1-secret-accessor-service-account
+                        serviceAccount: v1-secret-accessor-service-account
+                        securityContext: {}
+                        imagePullSecrets:
+                          - name: docker-secret
+                        schedulerName: default-scheduler
+                successfulJobsHistoryLimit: 3
+                failedJobsHistoryLimit: 1
+              status: {}
+          `);
 
+        it('should flatten the resource list', async () => {
+          api.listAll.returns([kindList]);
+
+          const actuals = await subject.getAll('CronJob', 'default');
+
+          for (let i = 0; i < actuals.length; i++) {
+            expect(actuals[i].constructor.name).to.equal(kindList.items[i].constructor.name);
+            expect(actuals[i].metadata.name).to.equal(kindList.items[i].metadata.name);
+          }
+          expect(actuals.length).to.be.greaterThan(0);
+
+          expect(actuals.length).to.equal(kindList.items.length);
         })
     })
+
+    describe('get', () => {
+
+        it('fetch the resource from the api', async () => {
+            const kind = 'CronJob';
+            const name = 'some-name';
+            const namespace = 'default';
+            await subject.get(kind, name, namespace);
+
+            const readArgs = api.read.getCall(0).args;
+            expect(api.read).to.have.been.calledOnce;
+            expect(readArgs).to.include(kind)
+            expect(readArgs).to.include(name);
+            expect(readArgs).to.include(namespace)
+        })
+    })
+
+    describe('deleteAll', () => {
+
+      const manifestCronJob = k8sManifest(`
+        apiVersion: batch/v1
+        kind: CronJob
+        metadata:
+          namespace: "default"
+      `);
+
+      const manifestDeployment = k8sManifest(`
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          namespace: "default"
+      `);
+
+      const manifestService = k8sManifest(`
+        apiVersion: v1
+        kind: Service
+        metadata:
+          namespace: "default"
+      `);
+
+      it('should delete each resource', async () => {
+
+          await subject.deleteAll([manifestCronJob, manifestDeployment, manifestService]);
+
+          const actualManifestCronJob = api.deleteAll.getCall(0).args[0][0];
+          const actualManifestDeployment = api.deleteAll.getCall(1).args[0][0];
+          const actualManifestService = api.deleteAll.getCall(2).args[0][0];
+          expect(actualManifestCronJob).to.equal(manifestCronJob);
+          expect(actualManifestDeployment).to.equal(manifestDeployment);
+          expect(actualManifestService).to.equal(manifestService);
+      })
+  })
+
+  describe('delete', () => {
+
+    it('should delete the specified manifest from the api', async () => {
+      await subject.delete(k8sManifest(`
+        apiVersion: batch/v1
+        kind: CronJob
+        metadata:
+          name: sample-cron-job
+      `));
+      expect(api.deleteAll).to.have.been.calledOnce;
+    })
+  })
 })

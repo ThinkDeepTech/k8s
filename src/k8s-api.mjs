@@ -14,6 +14,7 @@ class K8sApi {
         this._groupVersionToPreferredVersion = {};
 
         this._kindApiVersionMemo = {};
+        this.defaultNamespace = DEFAULT_NAMESPACE;
     }
 
     /**
@@ -28,6 +29,23 @@ class K8sApi {
             console.log(`Initialized the k8s api.`);
         }
     };
+
+    /**
+     * Set the default namespace to use.
+     *
+     * @param {string} [val = DEFAULT_NAMESPACE] Default namespace to apply.
+     */
+    set defaultNamespace(val = DEFAULT_NAMESPACE) {
+        this._defaultNamespace = val;
+    }
+
+    /**
+     * Read the default namespace in use.
+     * @returns String representation of the namespace or the module default.
+     */
+    get defaultNamespace() {
+        return this._defaultNamespace || DEFAULT_NAMESPACE;
+    }
 
     /**
      * Determine if the api has been initialized.
@@ -177,6 +195,25 @@ class K8sApi {
         return client;
     }
 
+    _registeredKind(kind) {
+        return kind.toLowerCase() in this._kindToGroupVersion;
+    }
+
+    /**
+     * Get the preferred api versions for the specified kind.
+     *
+     * NOTE: One kind can be part of multiple groups. Therefore, multiple preferred versions can exist.
+     *
+     * @param {String} kind K8s Kind.
+     * @returns Preferred api versions or [] if none exist.
+     */
+    preferredApiVersions(kind) {
+
+        const kindGroups = this._groupVersions(kind);
+
+        return this._preferredApiVersions(kindGroups);
+    }
+
     _preferredApiVersions(groupVersions) {
 
         /**
@@ -189,25 +226,6 @@ class K8sApi {
         }
 
         return [...preferredVersions].filter((val) => !!val);
-    }
-
-    _registeredKind(kind) {
-        return kind.toLowerCase() in this._kindToGroupVersion;
-    }
-
-    /**
-     * Get the preferred api versions for the specified kind.
-     *
-     * NOTE: One kind can be part of multiple groups. Therefore, multiple preferred versions can exist.
-     *
-     * @param {String} kind K8s Kind.
-     * @returns Preferred api versions.
-     */
-    preferredApiVersions(kind) {
-
-        const kindGroups = this._groupVersions(kind);
-
-        return this._preferredApiVersions(kindGroups);
     }
 
     /**
@@ -256,7 +274,7 @@ class K8sApi {
             return api[`create${kind}`].bind(api, manifest);
         } else if (api[`createNamespaced${kind}`]) {
 
-            return api[`createNamespaced${kind}`].bind(api, manifest.metadata.namespace || DEFAULT_NAMESPACE, manifest);
+            return api[`createNamespaced${kind}`].bind(api, manifest?.metadata?.namespace || this.defaultNamespace, manifest);
         } else {
 
             throw new Error(`
@@ -276,12 +294,14 @@ class K8sApi {
      */
     async exists(kind, name, namespace) {
 
-        if (!this._registeredKind(kind)) {
+        const _kind = normalizeKind(kind);
+
+        if (!this._registeredKind(_kind)) {
             throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
         }
 
         try {
-            await this.read( normalizeKind(kind), name, namespace );
+            await this.read( _kind, name, namespace );
             return true;
         } catch (e) {
             if (e.constructor.name !== 'ErrorNotFound') {
@@ -298,17 +318,19 @@ class K8sApi {
      *
      * @param {String} kind K8s kind.
      * @param {String} name Name of the object as seen in the metadata.name field.
-     * @param {String} [namespace = DEFAULT_NAMESPACE] Namespace of the object as seen in the metadata.namespace field.
+     * @param {String} [namespace = this.defaultNamespace] Namespace of the object as seen in the metadata.namespace field.
      *
      * @returns A kubernetes javascript client representation of the object on the cluster.
      */
-    async read(kind, name, namespace = DEFAULT_NAMESPACE) {
+    async read(kind, name, namespace = this.defaultNamespace) {
 
-        if (!this._registeredKind(kind)) {
+        const _kind = normalizeKind(kind);
+
+        if (!this._registeredKind(_kind)) {
             throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
         }
 
-        const results = await this._broadcastReadStrategy( normalizeKind(kind), name, namespace )();
+        const results = await this._broadcastReadStrategy( _kind, name, namespace )();
 
         if (results.length <= 0) {
             const namespaceMessage = !!namespace ? `in namespace ${namespace}` : ``;
@@ -329,10 +351,10 @@ class K8sApi {
      *
      * @param {String} kind K8s kind.
      * @param {String} name Name of the object as seen in the metadata.name field.
-     * @param {String} [namespace = DEFAULT_NAMESPACE] Namespace of the object as seen in the metadata.namespace field.
+     * @param {String} [namespace = this.defaultNamespace] Namespace of the object as seen in the metadata.namespace field.
      * @returns Read function broadcasting to all kind apis.
      */
-    _broadcastReadStrategy(kind, name, namespace = DEFAULT_NAMESPACE) {
+    _broadcastReadStrategy(kind, name, namespace = this.defaultNamespace) {
 
         const _kind = normalizeKind(kind);
 
@@ -356,10 +378,10 @@ class K8sApi {
      * @param {any} api K8s javascript client API with the needed function.
      * @param {String} kind K8s kind.
      * @param {String} name Name of the object as seen in the metadata.name field.
-     * @param {String} [namespace = DEFAULT_NAMESPACE] Namespace of the object as seen in the metadata.namespace field.
+     * @param {String} [namespace = this.defaultNamespace] Namespace of the object as seen in the metadata.namespace field.
      * @returns Function to use to read the specified cluster object.
      */
-    _readClusterObjectStrategy(api, kind, name, namespace = DEFAULT_NAMESPACE) {
+    _readClusterObjectStrategy(api, kind, name, namespace = this.defaultNamespace) {
 
         const _kind = normalizeKind(kind);
 
@@ -497,8 +519,9 @@ class K8sApi {
             const kindList = k8sManifest( this._configuredManifestObject(body) );
 
             for (let i = 0; i < kindList.items.length; i++) {
-                kindList.items[i].apiVersion = kindList.apiVersion;
-                kindList.items[i].kind = normalizeKind(kindList.items[i]?.constructor?.name || '');
+                const itemKind = normalizeKind(kindList.items[i]?.constructor?.name || '');
+                kindList.items[i].kind = itemKind;
+                kindList.items[i].apiVersion = kindList.apiVersion || this._inferApiVersion(itemKind);
             }
 
             this._memoizeManifestMetadata(kindList);
@@ -537,15 +560,15 @@ class K8sApi {
             throw new ErrorNotFound(`Kind ${kind} was not found in the API. Are you sure it's correctly spelled?`);
         }
 
-        if (api[`list${kind}`]) {
+        if (api[`list${_kind}`]) {
 
-            return api[`list${kind}`].bind(api);
-        } else if (!!namespace && api[`listNamespaced${_kind}`]) {
-
-            return api[`listNamespaced${_kind}`].bind(api, namespace);
+            return api[`list${_kind}`].bind(api);
         } else if (!namespace && api[`list${_kind}ForAllNamespaces`]) {
 
             return api[`list${_kind}ForAllNamespaces`].bind(api);
+        } else if (api[`listNamespaced${_kind}`]) {
+
+            return api[`listNamespaced${_kind}`].bind(api, namespace || this.defaultNamespace);
         } else {
 
             const namespaceText = namespace ? `and namespace ${namespace}` : ``;
@@ -581,6 +604,7 @@ class K8sApi {
         }
 
         const api = this._clientApi(manifest.apiVersion);
+
         return this._handleStrategyExecution.bind(this, [this._deleteClusterObjectStrategy(api, normalizeKind(manifest.kind), manifest)]);
     }
 
@@ -628,10 +652,15 @@ class K8sApi {
 
         if (!configuration.apiVersion) {
             const kind = configuration.kind || '';
-            configuration.apiVersion = this.preferredApiVersions(kind)[0] || this._memoizedApiVersions(kind)[0] || '';
+            configuration.apiVersion = this._inferApiVersion(kind) || configuration.groupVersion || '';
         }
 
         return configuration;
+    }
+
+    _inferApiVersion(kind) {
+        const _kind = normalizeKind(kind).toLowerCase();
+        return this.preferredApiVersions(_kind)[0] || this._memoizedApiVersions(_kind)[0] || null;
     }
 
     _memoizeManifestMetadata(manifest) {
@@ -641,18 +670,25 @@ class K8sApi {
             throw new Error(`The kind must be defined`);
         }
 
-        if (!this._kindApiVersionMemo[kind.toLowerCase()]) {
-            this._kindApiVersionMemo[kind.toLowerCase()] = new Set();
+        const _kind = kind.toLowerCase();
+        if (!this._memoizedApiVersions(_kind)) {
+            this._kindApiVersionMemo[_kind] = new Set();
         }
 
         const apiVersion = manifest.apiVersion || '';
-        if (!!apiVersion && !this._kindApiVersionMemo[kind.toLowerCase()].has(apiVersion)) {
-            this._kindApiVersionMemo[kind.toLowerCase()].add(apiVersion);
+        if (!!apiVersion && !this._memoizedApiVersions(_kind).includes(apiVersion)) {
+            this._kindApiVersionMemo[_kind].add(apiVersion);
         }
     }
 
     _memoizedApiVersions(kind) {
-        return [...this._kindApiVersionMemo[kind.toLowerCase()]] || [];
+
+        const _kind = kind.toLowerCase();
+        if (!this._kindApiVersionMemo[_kind]) {
+            this._kindApiVersionMemo[_kind] = new Set();
+        }
+
+        return [...this._kindApiVersionMemo[_kind]] || [];
     }
 };
 
