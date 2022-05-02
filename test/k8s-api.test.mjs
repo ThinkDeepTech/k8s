@@ -983,7 +983,36 @@ describe('k8s-api', () => {
         })
 
         it('should memoize the encountered manifests', async () => {
-            // TODO
+
+          const initialNumMemos = Object.keys(subject._kindApiVersionMemo).length;
+
+          const kind = 'Event';
+          const name = 'magical-event';
+          const namespace = 'default';
+          const readFunction = `readNamespaced${kind}`;
+
+          apiClient(k8s.CoreV1Api, apiClients)[readFunction].returns(Promise.reject({
+            response: {
+              statusCode: 404
+            }
+          }));
+
+          const eventObject = {
+            apiVersion: 'events.k8s.io/v1',
+            kind,
+          };
+          apiClient(k8s.EventsV1Api, apiClients)[readFunction].returns({
+            response: {
+              body: eventObject
+            }
+          });
+
+          await subject.read(kind, name, namespace);
+
+          const actualNumMemos = Object.keys(subject._kindApiVersionMemo).length;
+
+          expect(actualNumMemos).to.equal(initialNumMemos + 1);
+          expect(subject._kindApiVersionMemo[normalizeKind(kind).toLowerCase()]).to.include(eventObject.apiVersion);
         })
     })
 
@@ -1145,7 +1174,17 @@ describe('k8s-api', () => {
       })
 
       it('should memoize the returned manifest', async () => {
-          // TODO
+        const initialNumMemos = Object.keys(subject._kindApiVersionMemo).length;
+
+        await subject.createAll([manifestCronJob, manifestDeployment, manifestService]);
+
+        const actualNumMemos = Object.keys(subject._kindApiVersionMemo).length;
+
+        // one entry for each manifest created
+        expect(actualNumMemos).to.equal(initialNumMemos + 1 + 1 + 1);
+        expect(subject._kindApiVersionMemo[normalizeKind(manifestCronJob.kind).toLowerCase()]).to.include(manifestCronJob.apiVersion);
+        expect(subject._kindApiVersionMemo[normalizeKind(manifestDeployment.kind).toLowerCase()]).to.include(manifestDeployment.apiVersion);
+        expect(subject._kindApiVersionMemo[normalizeKind(manifestService.kind).toLowerCase()]).to.include(manifestService.apiVersion);
       })
     })
 
@@ -1291,7 +1330,17 @@ describe('k8s-api', () => {
       })
 
       it('should memoize the encountered manifests', async () => {
-          // TODO
+        const initialNumMemos = Object.keys(subject._kindApiVersionMemo).length;
+
+        await subject.patchAll([manifestCronJob, manifestDeployment, manifestService]);
+
+        const actualNumMemos = Object.keys(subject._kindApiVersionMemo).length;
+
+        // one entry for each manifest created
+        expect(actualNumMemos).to.equal(initialNumMemos + 1 + 1 + 1);
+        expect(subject._kindApiVersionMemo[normalizeKind(manifestCronJob.kind).toLowerCase()]).to.include(manifestCronJob.apiVersion);
+        expect(subject._kindApiVersionMemo[normalizeKind(manifestDeployment.kind).toLowerCase()]).to.include(manifestDeployment.apiVersion);
+        expect(subject._kindApiVersionMemo[normalizeKind(manifestService.kind).toLowerCase()]).to.include(manifestService.apiVersion);
       })
     })
 
@@ -1646,14 +1695,17 @@ describe('k8s-api', () => {
 
       it('should memoize the encountered list and list item manifests', async () => {
 
+        const kind = 'CronJob';
         const initialNumMemos = Object.keys(subject._kindApiVersionMemo).length;
 
-        await subject.listAll('CronJob', 'default');
+        await subject.listAll(kind, 'default');
 
         const actualNumMemos = Object.keys(subject._kindApiVersionMemo).length;
 
         // One list type is added, one item type is added.
         expect(actualNumMemos).to.equal(initialNumMemos + 1 + 1);
+        expect(subject._kindApiVersionMemo[normalizeKind(kind).toLowerCase()]).to.include(cronJobList.apiVersion);
+        expect(subject._kindApiVersionMemo[`${normalizeKind(kind)}List`.toLowerCase()]).to.include(cronJobList.apiVersion);
       })
 
     })
@@ -2250,7 +2302,16 @@ describe('k8s-api', () => {
         })
 
         it('should memoize the encountered manifests', async () => {
-            // TODO
+
+          const kind = 'APIGroup';
+
+          await subject._forEachApi(kubeConfig, resourceFunctionName, (_, __) => { }, apis);
+
+          const groups = apiGroups();
+          for (const [_, group] of Object.entries(groups)) {
+            expect(subject._kindApiVersionMemo[normalizeKind(kind).toLowerCase()]).to.include(group.apiVersion);
+          }
+          expect(Object.keys(groups).length).to.be.greaterThan(0);
         })
 
     })

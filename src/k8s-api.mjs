@@ -519,9 +519,9 @@ class K8sApi {
             const kindList = k8sManifest( this._configuredManifestObject(body) );
 
             for (let i = 0; i < kindList.items.length; i++) {
-                const kind = normalizeKind(kindList.items[i]?.constructor?.name || '');
-                kindList.items[i].kind = kind;
-                kindList.items[i].apiVersion = kindList.apiVersion || this._inferApiVersion(kind);
+                const itemKind = normalizeKind(kindList.items[i]?.constructor?.name || '');
+                kindList.items[i].kind = itemKind;
+                kindList.items[i].apiVersion = kindList.apiVersion || this._inferApiVersion(itemKind);
             }
 
             this._memoizeManifestMetadata(kindList);
