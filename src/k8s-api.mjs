@@ -274,7 +274,7 @@ class K8sApi {
             return api[`create${kind}`].bind(api, manifest);
         } else if (api[`createNamespaced${kind}`]) {
 
-            return api[`createNamespaced${kind}`].bind(api, manifest.metadata.namespace || this.defaultNamespace, manifest);
+            return api[`createNamespaced${kind}`].bind(api, manifest?.metadata?.namespace || this.defaultNamespace, manifest);
         } else {
 
             throw new Error(`

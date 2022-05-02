@@ -1088,8 +1088,6 @@ describe('k8s-api', () => {
       const manifestService = k8sManifest(`
         apiVersion: v1
         kind: Service
-        metadata:
-          namespace: "default"
       `);
 
       let batchClient;
@@ -1186,6 +1184,17 @@ describe('k8s-api', () => {
         expect(subject._kindApiVersionMemo[normalizeKind(manifestDeployment.kind).toLowerCase()]).to.include(manifestDeployment.apiVersion);
         expect(subject._kindApiVersionMemo[normalizeKind(manifestService.kind).toLowerCase()]).to.include(manifestService.apiVersion);
       })
+
+      it('should fallback on the default namespace if none is provided', async () => {
+
+        subject.defaultNamespace = 'development';
+
+        await subject.createAll([manifestCronJob, manifestDeployment, manifestService]);
+
+        const boundArgs = coreClient[coreFunctionName].bind.getCall(0).args;
+        expect(boundArgs).to.include(subject.defaultNamespace);
+      })
+
     })
 
     describe('_creationStrategy', () => {
