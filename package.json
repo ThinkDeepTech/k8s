@@ -2,12 +2,13 @@
   "name": "@thinkdeep/k8s",
   "version": "5.0.1",
   "description": "K8s node client for processing template string yaml configurations instead of value assignment to k8s javascript client object properties (i.e, V1CronJob).",
-  "main": "src/index.mjs",
+  "main": "src/index.js",
   "repository": "git@github.com:ThinkDeepTech/k8s.git",
   "author": "haydenmcp <hayden.mcparlane@gmail.com>",
   "license": "AGPL-3.0-only",
   "type": "module",
   "scripts": {
+    "lint": "eslint --fix ./**/*.mjs",
     "tests": "mocha ./test/**/*.test.mjs ./test/*.test.mjs"
   },
   "husky": {
@@ -28,12 +29,12 @@
     "@thinkdeep/k8s-manifest": "^2.0.0"
   },
   "devDependencies": {
-    "babel-eslint": "^10.0.1",
     "chai": "^4.3.4",
     "chai-as-promised": "^7.1.1",
-    "eslint": "^5.7.0",
-    "eslint-config-prettier": "^3.1.0",
-    "eslint-config-vaadin": "^0.2.7",
+    "eslint": "^8.14.0",
+    "eslint-config-google": "^0.14.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-config-standard": "^17.0.0",
     "husky": "^1.1.2",
     "lint-staged": "^7.3.0",
     "mocha": "^9.1.3",

@@ -1,72 +1,67 @@
-import { k8sManifest } from '@thinkdeep/k8s-manifest';
+import {k8sManifest} from '@thinkdeep/k8s-manifest';
 import chai from 'chai';
 import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
+
+import {K8sClient} from '../src/k8s-client.mjs';
 const expect = chai.expect;
 chai.use(sinonChai);
 
-import {K8sClient} from '../src/k8s-client.mjs';
+describe('k8s-client', function () {
+  let kubeConfig;
+  let api;
+  let subject;
+  beforeEach(function () {
+    kubeConfig = {};
 
-describe('k8s-client', () => {
+    api = {
+      init: sinon.stub(),
+      exists: sinon.stub(),
+      createAll: sinon.stub(),
+      patchAll: sinon.stub(),
+      read: sinon.stub(),
+      listAll: sinon.stub(),
+      deleteAll: sinon.stub(),
+    };
 
-    let kubeConfig;
-    let api;
-    let subject;
-    beforeEach(() => {
-        kubeConfig = {};
+    subject = new K8sClient(kubeConfig, api);
+  });
 
-        api = {
-            init: sinon.stub(),
-            exists: sinon.stub(),
-            createAll: sinon.stub(),
-            patchAll: sinon.stub(),
-            read: sinon.stub(),
-            listAll: sinon.stub(),
-            deleteAll: sinon.stub()
-        };
+  describe('init', function () {
+    it('should initialize the api with kubeConfig', async function () {
+      await subject.init();
 
-        subject = new K8sClient(kubeConfig, api);
-    })
+      const actual = api.init.getCall(0).args[0];
+      expect(actual).to.equal(kubeConfig);
+    });
 
-    describe('init', () => {
+    it('should return a reference to this', async function () {
+      const actual = await subject.init();
+      expect(actual).to.equal(subject);
+    });
+  });
 
-        it('should initialize the api with kubeConfig', async () => {
-            await subject.init();
+  describe('exists', function () {
+    it('should check if the object exists using the api', async function () {
+      const expectedKind = 'deployment';
+      const expectedName = 'somename';
+      const expectedNamespace = 'default';
+      await subject.exists(expectedKind, expectedName, expectedNamespace);
 
-            const actual = api.init.getCall(0).args[0];
-            expect(actual).to.equal(kubeConfig);
-        })
+      const args = api.exists.getCall(0).args;
+      const actualKind = args[0];
+      const actualName = args[1];
+      const actualNamespace = args[2];
 
-        it('should return a reference to this', async () => {
+      expect(actualKind).to.equal(expectedKind);
+      expect(actualName).to.equal(expectedName);
+      expect(actualNamespace).to.equal(expectedNamespace);
+    });
+  });
 
-            const actual = await subject.init();
-            expect(actual).to.equal(subject);
-        })
-    })
-
-    describe('exists', () => {
-
-        it('should check if the object exists using the api', async () => {
-            const expectedKind = 'deployment';
-            const expectedName = 'somename';
-            const expectedNamespace = 'default';
-            await subject.exists(expectedKind, expectedName, expectedNamespace);
-
-            const args = api.exists.getCall(0).args;
-            const actualKind = args[0];
-            const actualName = args[1];
-            const actualNamespace = args[2];
-
-            expect(actualKind).to.equal(expectedKind);
-            expect(actualName).to.equal(expectedName);
-            expect(actualNamespace).to.equal(expectedNamespace);
-        })
-    })
-
-    describe('createAll', () => {
-
-        it('should accept k8s javascript client objects', async () => {
-            const service = k8sManifest(`
+  describe('createAll', function () {
+    it('should accept k8s javascript client objects', async function () {
+      const service = k8sManifest(`
                 apiVersion: v1
                 kind: Service
                 metadata:
@@ -99,18 +94,18 @@ describe('k8s-client', () => {
                   loadBalancer: {}
                 `);
 
-            api.createAll.returns([]);
+      api.createAll.returns([]);
 
-            const actuals = await subject.createAll([service]);
+      const actuals = await subject.createAll([service]);
 
-            expect(actuals[0].constructor.name).to.include('Service');
-        })
+      expect(actuals[0].constructor.name).to.include('Service');
+    });
 
-        it('should accept template string yaml', async () => {
+    it('should accept template string yaml', async function () {
+      api.createAll.returns([]);
 
-            api.createAll.returns([]);
-
-            const actuals = await subject.createAll([`
+      const actuals = await subject.createAll([
+        `
                 apiVersion: v1
                 kind: Service
                 metadata:
@@ -141,20 +136,20 @@ describe('k8s-client', () => {
                   type: ClusterIP
                 status:
                   loadBalancer: {}
-                `]);
+                `,
+      ]);
 
-            expect(actuals[0].constructor.name).to.include('Service');
-        })
+      expect(actuals[0].constructor.name).to.include('Service');
+    });
 
-        it('should process the configurations in the same order as they are passed in', async () => {
+    it('should process the configurations in the same order as they are passed in', async function () {
+      const options = {
+        appLabel: 'some-application',
+        configMap: 'some-configmap',
+        secret: 'some-dynamic-secret-name',
+      };
 
-            const options = {
-                appLabel: 'some-application',
-                configMap: 'some-configmap',
-                secret: 'some-dynamic-secret-name'
-            };
-
-            const pvc = k8sManifest(`
+      const pvc = k8sManifest(`
                 apiVersion: v1
                 kind: PersistentVolumeClaim
                 metadata:
@@ -188,7 +183,7 @@ describe('k8s-client', () => {
                   phase: Bound
                 `);
 
-            const deployment = k8sManifest(`
+      const deployment = k8sManifest(`
                 apiVersion: apps/v1
                 kind: Deployment
                 metadata:
@@ -268,7 +263,7 @@ describe('k8s-client', () => {
                     updatedReplicas: 1
                 `);
 
-            const service = k8sManifest(`
+      const service = k8sManifest(`
                 apiVersion: v1
                 kind: Service
                 metadata:
@@ -301,26 +296,37 @@ describe('k8s-client', () => {
                   loadBalancer: {}
                 `);
 
-            const configurations = [deployment, service, pvc];
+      const configurations = [deployment, service, pvc];
 
-            api.createAll.returns([]);
+      api.createAll.returns([]);
 
-            const actuals = await subject.createAll(configurations);
+      const actuals = await subject.createAll(configurations);
 
-            expect(actuals[0].constructor.name).to.equal(configurations[0].constructor.name)
-            expect(actuals[0].metadata.name).to.equal(configurations[0].metadata.name);
+      expect(actuals[0].constructor.name).to.equal(
+        configurations[0].constructor.name
+      );
+      expect(actuals[0].metadata.name).to.equal(
+        configurations[0].metadata.name
+      );
 
-            expect(actuals[1].constructor.name).to.equal(configurations[1].constructor.name)
-            expect(actuals[1].metadata.name).to.equal(configurations[1].metadata.name);
+      expect(actuals[1].constructor.name).to.equal(
+        configurations[1].constructor.name
+      );
+      expect(actuals[1].metadata.name).to.equal(
+        configurations[1].metadata.name
+      );
 
-            expect(actuals[2].constructor.name).to.equal(configurations[2].constructor.name)
-            expect(actuals[2].metadata.name).to.equal(configurations[2].metadata.name);
-        })
-    })
+      expect(actuals[2].constructor.name).to.equal(
+        configurations[2].constructor.name
+      );
+      expect(actuals[2].metadata.name).to.equal(
+        configurations[2].metadata.name
+      );
+    });
+  });
 
-    describe('create', () => {
-
-        const yaml = `
+  describe('create', function () {
+    const yaml = `
             apiVersion: v1
             kind: Service
             metadata:
@@ -353,32 +359,30 @@ describe('k8s-client', () => {
               loadBalancer: {}
             `;
 
-        it('should accept k8s javascript client objects', async () => {
-            const clientObject = k8sManifest(yaml);
+    it('should accept k8s javascript client objects', async function () {
+      const clientObject = k8sManifest(yaml);
 
-            api.createAll.returns([]);
+      api.createAll.returns([]);
 
-            const actual = await subject.create(clientObject);
+      const actual = await subject.create(clientObject);
 
-            expect(actual.constructor.name).to.include('Service');
-        })
+      expect(actual.constructor.name).to.include('Service');
+    });
 
-        it('should accept template string yaml', async () => {
+    it('should accept template string yaml', async function () {
+      api.createAll.returns([]);
 
-            api.createAll.returns([]);
+      const actual = await subject.create(yaml);
 
-            const actual = await subject.create(yaml);
+      expect(actual.constructor.name).to.include('Service');
+    });
 
-            expect(actual.constructor.name).to.include('Service');
-        })
+    it('should return the k8s javascript client object from the API if the object was created', async function () {
+      const clientObjectsFromApi = [k8sManifest(yaml)];
 
-        it('should return the k8s javascript client object from the API if the object was created', async () => {
+      api.createAll.returns(clientObjectsFromApi);
 
-            const clientObjectsFromApi = [ k8sManifest(yaml) ];
-
-            api.createAll.returns(clientObjectsFromApi);
-
-            const actual = await subject.create(`
+      const actual = await subject.create(`
                 apiVersion: v1
                 kind: Service
                 metadata:
@@ -405,15 +409,13 @@ describe('k8s-client', () => {
                   type: ClusterIP
                 `);
 
-            expect(actual).to.equal(clientObjectsFromApi[0]);
-        })
-    })
+      expect(actual).to.equal(clientObjectsFromApi[0]);
+    });
+  });
 
-
-    describe('applyAll', () => {
-
-        it('should accept k8s javascript client objects', async () => {
-            const service = k8sManifest(`
+  describe('applyAll', function () {
+    it('should accept k8s javascript client objects', async function () {
+      const service = k8sManifest(`
                 apiVersion: v1
                 kind: Service
                 metadata:
@@ -446,22 +448,22 @@ describe('k8s-client', () => {
                   loadBalancer: {}
                 `);
 
-            api.exists.returns(false);
+      api.exists.returns(false);
 
-            api.createAll.returns([]);
+      api.createAll.returns([]);
 
-            const actuals = await subject.applyAll([service]);
+      const actuals = await subject.applyAll([service]);
 
-            expect(actuals[0].constructor.name).to.include('Service');
-        })
+      expect(actuals[0].constructor.name).to.include('Service');
+    });
 
-        it('should accept template string yaml', async () => {
+    it('should accept template string yaml', async function () {
+      api.createAll.returns([]);
 
-            api.createAll.returns([]);
+      api.exists.returns(false);
 
-            api.exists.returns(false);
-
-            const actuals = await subject.applyAll([`
+      const actuals = await subject.applyAll([
+        `
                 apiVersion: v1
                 kind: Service
                 metadata:
@@ -492,20 +494,20 @@ describe('k8s-client', () => {
                   type: ClusterIP
                 status:
                   loadBalancer: {}
-                `]);
+                `,
+      ]);
 
-            expect(actuals[0].constructor.name).to.include('Service');
-        })
+      expect(actuals[0].constructor.name).to.include('Service');
+    });
 
-        it('should process the configurations in the same order as they are passed in', async () => {
+    it('should process the configurations in the same order as they are passed in', async function () {
+      const options = {
+        appLabel: 'some-application',
+        configMap: 'some-configmap',
+        secret: 'some-dynamic-secret-name',
+      };
 
-            const options = {
-                appLabel: 'some-application',
-                configMap: 'some-configmap',
-                secret: 'some-dynamic-secret-name'
-            };
-
-            const pvc = k8sManifest(`
+      const pvc = k8sManifest(`
                 apiVersion: v1
                 kind: PersistentVolumeClaim
                 metadata:
@@ -539,7 +541,7 @@ describe('k8s-client', () => {
                   phase: Bound
                 `);
 
-            const deployment = k8sManifest(`
+      const deployment = k8sManifest(`
                 apiVersion: apps/v1
                 kind: Deployment
                 metadata:
@@ -619,7 +621,7 @@ describe('k8s-client', () => {
                     updatedReplicas: 1
                 `);
 
-            const service = k8sManifest(`
+      const service = k8sManifest(`
                 apiVersion: v1
                 kind: Service
                 metadata:
@@ -652,28 +654,39 @@ describe('k8s-client', () => {
                   loadBalancer: {}
                 `);
 
-            const configurations = [deployment, service, pvc];
+      const configurations = [deployment, service, pvc];
 
-            api.exists.returns(false);
+      api.exists.returns(false);
 
-            api.createAll.returns([]);
+      api.createAll.returns([]);
 
-            const actuals = await subject.applyAll(configurations);
+      const actuals = await subject.applyAll(configurations);
 
-            expect(actuals[0].constructor.name).to.equal(configurations[0].constructor.name)
-            expect(actuals[0].metadata.name).to.equal(configurations[0].metadata.name);
+      expect(actuals[0].constructor.name).to.equal(
+        configurations[0].constructor.name
+      );
+      expect(actuals[0].metadata.name).to.equal(
+        configurations[0].metadata.name
+      );
 
-            expect(actuals[1].constructor.name).to.equal(configurations[1].constructor.name)
-            expect(actuals[1].metadata.name).to.equal(configurations[1].metadata.name);
+      expect(actuals[1].constructor.name).to.equal(
+        configurations[1].constructor.name
+      );
+      expect(actuals[1].metadata.name).to.equal(
+        configurations[1].metadata.name
+      );
 
-            expect(actuals[2].constructor.name).to.equal(configurations[2].constructor.name)
-            expect(actuals[2].metadata.name).to.equal(configurations[2].metadata.name);
-        })
-    })
+      expect(actuals[2].constructor.name).to.equal(
+        configurations[2].constructor.name
+      );
+      expect(actuals[2].metadata.name).to.equal(
+        configurations[2].metadata.name
+      );
+    });
+  });
 
-    describe('apply', () => {
-
-        const yaml = `
+  describe('apply', function () {
+    const yaml = `
             apiVersion: v1
             kind: Service
             metadata:
@@ -706,49 +719,47 @@ describe('k8s-client', () => {
               loadBalancer: {}
             `;
 
-        it('should accept k8s javascript client objects', async () => {
-            const clientObject = k8sManifest(yaml);
+    it('should accept k8s javascript client objects', async function () {
+      const clientObject = k8sManifest(yaml);
 
-            api.exists.returns(false);
+      api.exists.returns(false);
 
-            api.createAll.returns([]);
+      api.createAll.returns([]);
 
-            const actual = await subject.apply(clientObject);
+      const actual = await subject.apply(clientObject);
 
-            expect(actual.constructor.name).to.include('Service');
-        })
+      expect(actual.constructor.name).to.include('Service');
+    });
 
-        it('should accept template string yaml', async () => {
+    it('should accept template string yaml', async function () {
+      api.exists.returns(false);
 
-            api.exists.returns(false);
+      api.createAll.returns([]);
 
-            api.createAll.returns([]);
+      const actual = await subject.apply(yaml);
 
-            const actual = await subject.apply(yaml);
+      expect(actual.constructor.name).to.include('Service');
+    });
 
-            expect(actual.constructor.name).to.include('Service');
-        })
+    it('should create the object on the cluster if it does not already exist', async function () {
+      api.exists.returns(false);
 
-        it('should create the object on the cluster if it does not already exist', async () => {
-            api.exists.returns(false);
+      api.createAll.returns([]);
 
-            api.createAll.returns([]);
+      const actual = await subject.apply(yaml);
 
-            const actual = await subject.apply(yaml);
+      expect(api.createAll.callCount).to.equal(1);
+      expect(actual.constructor.name).to.include('Service');
+    });
 
-            expect(api.createAll).to.have.been.calledOnce;
-            expect(actual.constructor.name).to.include('Service');
-        })
+    it('should modify the object on the cluster if it exists', async function () {
+      const clientObjectsFromApi = [k8sManifest(yaml)];
 
-        it('should modify the object on the cluster if it exists', async () => {
+      api.exists.returns(true);
 
-            const clientObjectsFromApi = [ k8sManifest(yaml) ];
+      api.patchAll.returns(clientObjectsFromApi);
 
-            api.exists.returns(true);
-
-            api.patchAll.returns(clientObjectsFromApi);
-
-            const actual = await subject.apply(`
+      const actual = await subject.apply(`
                 apiVersion: v1
                 kind: Service
                 metadata:
@@ -775,14 +786,13 @@ describe('k8s-client', () => {
                   type: ClusterIP
                 `);
 
-            expect(api.patchAll).to.have.been.calledOnce;
-            expect(actual).to.equal(clientObjectsFromApi[0]);
-        })
-    })
+      expect(api.patchAll.callCount).to.equal(1);
+      expect(actual).to.equal(clientObjectsFromApi[0]);
+    });
+  });
 
-    describe('getAll', () => {
-
-      const kindList = k8sManifest(`
+  describe('getAll', function () {
+    const kindList = k8sManifest(`
           kind: CronJobList
           apiVersion: batch/v1beta1
           metadata:
@@ -977,83 +987,89 @@ describe('k8s-client', () => {
               status: {}
           `);
 
-        it('should flatten the resource list', async () => {
-          api.listAll.returns([kindList]);
+    it('should flatten the resource list', async function () {
+      api.listAll.returns([kindList]);
 
-          const actuals = await subject.getAll('CronJob', 'default');
+      const actuals = await subject.getAll('CronJob', 'default');
 
-          for (let i = 0; i < actuals.length; i++) {
-            expect(actuals[i].constructor.name).to.equal(kindList.items[i].constructor.name);
-            expect(actuals[i].metadata.name).to.equal(kindList.items[i].metadata.name);
-          }
-          expect(actuals.length).to.be.greaterThan(0);
+      for (let i = 0; i < actuals.length; i++) {
+        expect(actuals[i].constructor.name).to.equal(
+          kindList.items[i].constructor.name
+        );
+        expect(actuals[i].metadata.name).to.equal(
+          kindList.items[i].metadata.name
+        );
+      }
+      expect(actuals.length).to.be.greaterThan(0);
 
-          expect(actuals.length).to.equal(kindList.items.length);
-        })
-    })
+      expect(actuals.length).to.equal(kindList.items.length);
+    });
+  });
 
-    describe('get', () => {
+  describe('get', function () {
+    it('fetch the resource from the api', async function () {
+      const kind = 'CronJob';
+      const name = 'some-name';
+      const namespace = 'default';
+      await subject.get(kind, name, namespace);
 
-        it('fetch the resource from the api', async () => {
-            const kind = 'CronJob';
-            const name = 'some-name';
-            const namespace = 'default';
-            await subject.get(kind, name, namespace);
+      const readArgs = api.read.getCall(0).args;
+      expect(api.read.callCount).to.equal(1);
+      expect(readArgs).to.include(kind);
+      expect(readArgs).to.include(name);
+      expect(readArgs).to.include(namespace);
+    });
+  });
 
-            const readArgs = api.read.getCall(0).args;
-            expect(api.read).to.have.been.calledOnce;
-            expect(readArgs).to.include(kind)
-            expect(readArgs).to.include(name);
-            expect(readArgs).to.include(namespace)
-        })
-    })
-
-    describe('deleteAll', () => {
-
-      const manifestCronJob = k8sManifest(`
+  describe('deleteAll', function () {
+    const manifestCronJob = k8sManifest(`
         apiVersion: batch/v1
         kind: CronJob
         metadata:
           namespace: "default"
       `);
 
-      const manifestDeployment = k8sManifest(`
+    const manifestDeployment = k8sManifest(`
         apiVersion: apps/v1
         kind: Deployment
         metadata:
           namespace: "default"
       `);
 
-      const manifestService = k8sManifest(`
+    const manifestService = k8sManifest(`
         apiVersion: v1
         kind: Service
         metadata:
           namespace: "default"
       `);
 
-      it('should delete each resource', async () => {
+    it('should delete each resource', async function () {
+      await subject.deleteAll([
+        manifestCronJob,
+        manifestDeployment,
+        manifestService,
+      ]);
 
-          await subject.deleteAll([manifestCronJob, manifestDeployment, manifestService]);
+      const actualManifestCronJob = api.deleteAll.getCall(0).args[0][0];
+      const actualManifestDeployment = api.deleteAll.getCall(1).args[0][0];
+      const actualManifestService = api.deleteAll.getCall(2).args[0][0];
+      expect(actualManifestCronJob).to.equal(manifestCronJob);
+      expect(actualManifestDeployment).to.equal(manifestDeployment);
+      expect(actualManifestService).to.equal(manifestService);
+    });
+  });
 
-          const actualManifestCronJob = api.deleteAll.getCall(0).args[0][0];
-          const actualManifestDeployment = api.deleteAll.getCall(1).args[0][0];
-          const actualManifestService = api.deleteAll.getCall(2).args[0][0];
-          expect(actualManifestCronJob).to.equal(manifestCronJob);
-          expect(actualManifestDeployment).to.equal(manifestDeployment);
-          expect(actualManifestService).to.equal(manifestService);
-      })
-  })
-
-  describe('delete', () => {
-
-    it('should delete the specified manifest from the api', async () => {
-      await subject.delete(k8sManifest(`
+  describe('delete', function () {
+    it('should delete the specified manifest from the api', async function () {
+      await subject.delete(
+        k8sManifest(`
         apiVersion: batch/v1
         kind: CronJob
         metadata:
           name: sample-cron-job
-      `));
-      expect(api.deleteAll).to.have.been.calledOnce;
-    })
-  })
-})
+      `)
+      );
+      expect(api.deleteAll.callCount).to.equal(1);
+    });
+  });
+});

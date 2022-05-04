@@ -1,11 +1,12 @@
 module.exports = {
   env: {
-    es6: true,
+    browser: true,
     node: true,
+    mocha: true
   },
-  extends: ['vaadin', 'prettier'],
-  parser: 'babel-eslint',
+  extends: ['eslint:recommended', 'standard', 'google', 'prettier'],
   parserOptions: {
+    ecmaVersion: 2020,
     sourceType: 'module',
   },
   globals: {
