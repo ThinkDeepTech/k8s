@@ -10,14 +10,34 @@
   "scripts": {
     "tests": "mocha ./test/**/*.test.mjs ./test/*.test.mjs"
   },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged",
+      "pre-push": "yarn run tests"
+    }
+  },
+  "lint-staged": {
+    "*.mjs": [
+      "./node_modules/.bin/eslint --fix",
+      "prettier --write",
+      "git add"
+    ]
+  },
   "dependencies": {
     "@kubernetes/client-node": "0.15",
     "@thinkdeep/k8s-manifest": "^2.0.0"
   },
   "devDependencies": {
+    "babel-eslint": "^10.0.1",
     "chai": "^4.3.4",
     "chai-as-promised": "^7.1.1",
+    "eslint": "^5.7.0",
+    "eslint-config-prettier": "^3.1.0",
+    "eslint-config-vaadin": "^0.2.7",
+    "husky": "^1.1.2",
+    "lint-staged": "^7.3.0",
     "mocha": "^9.1.3",
+    "prettier": "^2.2.1",
     "sinon": "^12.0.1",
     "sinon-chai": "^3.7.0"
   },
