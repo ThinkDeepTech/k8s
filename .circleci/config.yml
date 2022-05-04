@@ -11,6 +11,12 @@ commands:
             install-yarn: false
             node-version: '16.14.2'
 
+    initialize_codebase:
+      steps:
+        - run:
+            name: Download and install dependencies
+            command: npm install
+
     test_codebase:
       steps:
         - run:
@@ -28,6 +34,7 @@ jobs:
       steps:
         - checkout
         - setup_node_environment
+        - initialize_codebase
         - test_codebase
 
 workflows:
