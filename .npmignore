@@ -1,7 +1,9 @@
+.circleci/*
 test/*
 .eslintrc.*
 .eslintignore
 .prettierrc
+.gitignore
 
 # Lock files
 *-lock.json
