@@ -1,4 +1,7 @@
 test/*
+.eslintrc.*
+.eslintignore
+.prettierrc
 
 # Lock files
 *-lock.json

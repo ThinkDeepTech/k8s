@@ -1,14 +1,28 @@
 {
   "name": "@thinkdeep/k8s",
-  "version": "5.0.1",
+  "version": "5.0.2",
   "description": "K8s node client for processing template string yaml configurations instead of value assignment to k8s javascript client object properties (i.e, V1CronJob).",
-  "main": "src/index.mjs",
+  "main": "src/index.js",
   "repository": "git@github.com:ThinkDeepTech/k8s.git",
   "author": "haydenmcp <hayden.mcparlane@gmail.com>",
   "license": "AGPL-3.0-only",
   "type": "module",
   "scripts": {
+    "lint": "eslint --fix ./**/*.mjs",
     "tests": "mocha ./test/**/*.test.mjs ./test/*.test.mjs"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged",
+      "pre-push": "yarn run tests"
+    }
+  },
+  "lint-staged": {
+    "*.mjs": [
+      "./node_modules/.bin/eslint --fix",
+      "prettier --write",
+      "git add"
+    ]
   },
   "dependencies": {
     "@kubernetes/client-node": "0.15",
@@ -17,7 +31,14 @@
   "devDependencies": {
     "chai": "^4.3.4",
     "chai-as-promised": "^7.1.1",
+    "eslint": "^8.14.0",
+    "eslint-config-google": "^0.14.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-config-standard": "^17.0.0",
+    "husky": "^1.1.2",
+    "lint-staged": "^7.3.0",
     "mocha": "^9.1.3",
+    "prettier": "^2.2.1",
     "sinon": "^12.0.1",
     "sinon-chai": "^3.7.0"
   },
