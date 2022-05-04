@@ -629,7 +629,7 @@ class K8sApi {
    *
    * @param {string} kind The k8s kind (i.e, CronJob).
    * @param {string} namespace The namespace of the object as seen in the k8s metadata namespace field.
-   * @return {Array<any>} Array of kind list objects (i.e, CronJobList) taken from the various relevant APIs (i.e, batch/v1 and batch/v1beta1).
+   * @return {Promise<Array<any>>} Promise that resolves to array of kind list objects (i.e, CronJobList) taken from the various relevant APIs (i.e, batch/v1 and batch/v1beta1).
    */
   async listAll(kind, namespace) {
     if (!this._registeredKind(kind)) {
