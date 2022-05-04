@@ -1,3 +1,6 @@
+[![CircleCI](https://circleci.com/gh/ThinkDeepTech/k8s.svg?style=shield)](https://circleci.com/gh/ThinkDeepTech/k8s)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=ThinkDeepTech_thinkdeep&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=ThinkDeepTech_k8s)
+
 # k8s
 K8s node client for processing template string yaml configurations instead of value assignment to k8s javascript client object properties (i.e, V1CronJob). If you're just interested in creating k8s javascript client objects using template strings, see
 [@thinkdeep/k8s-manifest](https://www.npmjs.com/package/@thinkdeep/k8s-manifest).

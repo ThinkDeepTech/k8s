@@ -1,0 +1,48 @@
+version: 2.1
+
+orbs:
+    node: circleci/node@5.0.2
+
+commands:
+
+    setup_node_environment:
+      steps:
+        - node/install:
+            install-yarn: false
+            node-version: '16.14.2'
+
+    initialize_codebase:
+      steps:
+        - run:
+            name: Download and install dependencies
+            command: npm install
+
+    test_codebase:
+      steps:
+        - run:
+            name: Run tests
+            command: npm run tests
+
+jobs:
+
+    build_package:
+      docker:
+        - image: 'cimg/base:stable'
+
+      working_directory: ~/project
+
+      steps:
+        - checkout
+        - setup_node_environment
+        - initialize_codebase
+        - test_codebase
+
+workflows:
+
+  version: 2
+
+  build_all:
+
+    jobs:
+
+      - build_package
