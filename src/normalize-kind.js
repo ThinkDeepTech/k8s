@@ -35,12 +35,7 @@ const normalizeKind = (prospectiveKind) => {
 const removeVersion = (constructorName) => {
   if (!constructorName) return constructorName;
 
-  const indexLastNumber = lastInteger(constructorName);
-  if (indexLastNumber < 0) {
-    return constructorName;
-  }
-
-  return constructorName.slice(indexLastNumber + 1);
+  return constructorName.slice(lastInteger(constructorName) + 1);
 };
 
 const lastInteger = (str) => {
