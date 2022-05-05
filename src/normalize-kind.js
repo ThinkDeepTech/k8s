@@ -35,10 +35,10 @@ const normalizeKind = (prospectiveKind) => {
 const removeVersion = (constructorName) => {
   if (!constructorName) return constructorName;
 
-  return constructorName.slice(lastInteger(constructorName) + 1);
+  return constructorName.slice(lastIntegerIndex(constructorName) + 1);
 };
 
-const lastInteger = (str) => {
+const lastIntegerIndex = (str) => {
   const subject = str.trim();
 
   let lastIndex = -1;

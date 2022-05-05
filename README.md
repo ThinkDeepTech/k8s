@@ -1,4 +1,4 @@
-# k8s
+# @thinkdeep/k8s
 [![CircleCI](https://circleci.com/gh/ThinkDeepTech/k8s.svg?style=shield)](https://circleci.com/gh/ThinkDeepTech/k8s)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=ThinkDeepTech_thinkdeep&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=ThinkDeepTech_k8s)
 
