@@ -33,12 +33,31 @@ const normalizeKind = (prospectiveKind) => {
 };
 
 const removeVersion = (constructorName) => {
-  const indexLastNumber = constructorName.search(/\d+(?=[A-Za-z]+$)/);
+  if (!constructorName) return constructorName;
+
+  const indexLastNumber = lastInteger(constructorName);
   if (indexLastNumber < 0) {
     return constructorName;
   }
 
   return constructorName.slice(indexLastNumber + 1);
+};
+
+const lastInteger = (str) => {
+  const subject = str.trim();
+
+  let lastIndex = -1;
+  for (let i = 0; i < subject.length; i++) {
+    if (isNumber(subject[i])) {
+      lastIndex = i;
+    }
+  }
+
+  return lastIndex;
+};
+
+const isNumber = (str) => {
+  return !isNaN(str) && !isNaN(parseFloat(str));
 };
 
 export {normalizeKind};
