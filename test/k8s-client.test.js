@@ -3,7 +3,7 @@ import chai from 'chai';
 import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
 
-import {K8sClient} from '../src/k8s-client.mjs';
+import {K8sClient} from '../src/k8s-client.js';
 const expect = chai.expect;
 chai.use(sinonChai);
 

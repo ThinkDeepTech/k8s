@@ -5,9 +5,9 @@ import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
 import chaiAsPromised from 'chai-as-promised';
 
-import {K8sApi} from '../src/k8s-api.mjs';
-import {normalizeKind} from '../src/normalize-kind.mjs';
-import {ErrorNotFound} from '../src/error/error-not-found.mjs';
+import {K8sApi} from '../src/k8s-api.js';
+import {normalizeKind} from '../src/normalize-kind.js';
+import {ErrorNotFound} from '../src/error/error-not-found.js';
 const expect = chai.expect;
 chai.use(sinonChai);
 chai.use(chaiAsPromised);
