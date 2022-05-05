@@ -20,8 +20,7 @@
   "lint-staged": {
     "*.mjs": [
       "./node_modules/.bin/eslint --fix",
-      "prettier --write",
-      "git add"
+      "prettier --write"
     ]
   },
   "dependencies": {
