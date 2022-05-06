@@ -2597,7 +2597,7 @@ describe('k8s-api', () => {
       ).not.to.be.rejected;
     });
 
-    it('should throw propogate the error if status code is not defined', async () => {
+    it('should propogate the error if status code is not defined', async () => {
       const requestResult = {
         response: {
           body: {},
