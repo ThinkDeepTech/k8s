@@ -1,6 +1,6 @@
 {
   "name": "@thinkdeep/k8s",
-  "version": "5.0.6-beta.2",
+  "version": "5.0.6-beta.3",
   "description": "K8s node client for processing template string yaml configurations instead of value assignment to k8s javascript client object properties (i.e, V1CronJob).",
   "main": "src/index.js",
   "repository": "git@github.com:ThinkDeepTech/k8s.git",
@@ -25,7 +25,7 @@
   },
   "dependencies": {
     "@kubernetes/client-node": "0.15",
-    "@thinkdeep/k8s-manifest": "^2.0.1-beta.0"
+    "@thinkdeep/k8s-manifest": "^2.0.1"
   },
   "devDependencies": {
     "chai": "^4.3.4",
