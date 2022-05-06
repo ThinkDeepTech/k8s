@@ -5,7 +5,7 @@
 Node client interfacing with a k8s cluster using simple functions and yaml template strings. If you're just interested in creating k8s javascript client objects using template strings, see [@thinkdeep/k8s-manifest](https://www.npmjs.com/package/@thinkdeep/k8s-manifest).
 
 # Dependencies
-- [Kubernetes javascript client](https://github.com/kubernetes-client/javascript) v0.15
+- [Kubernetes javascript client v0.15](https://github.com/kubernetes-client/javascript) (Based on conventions within the k8s javascript client API I think it could work with multiple versions)
 - [Node v16.14.2 LTS](https://nodejs.org/en/)
 
 # Installation
