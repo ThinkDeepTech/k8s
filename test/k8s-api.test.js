@@ -2466,7 +2466,14 @@ describe('k8s-api', () => {
 
     it('should throw an error if an invalid kube config is supplied', async () => {
       await expect(
-        subject._forEachApi({}, resourceFunctionName, (_, __) => {}, apis)
+        subject._forEachApi(
+          {},
+          resourceFunctionName,
+          () => {
+            /** Do nothing */
+          },
+          apis
+        )
       ).to.be.rejected;
     });
 
@@ -2474,7 +2481,9 @@ describe('k8s-api', () => {
       await subject._forEachApi(
         kubeConfig,
         resourceFunctionName,
-        (_, __) => {},
+        () => {
+          /** Do nothing */
+        },
         apis
       );
 
@@ -2492,7 +2501,14 @@ describe('k8s-api', () => {
         'not a function';
 
       await expect(
-        subject._forEachApi(kubeConfig, resourceName, (_, __) => {}, apis)
+        subject._forEachApi(
+          kubeConfig,
+          resourceName,
+          () => {
+            /** Do nothing */
+          },
+          apis
+        )
       ).to.be.rejectedWith(Error);
     });
 
@@ -2546,7 +2562,9 @@ describe('k8s-api', () => {
         subject._forEachApi(
           kubeConfig,
           resourceFunctionName,
-          (_, __) => {},
+          () => {
+            /** Do nothing */
+          },
           apis
         )
       ).to.be.rejected;
@@ -2571,7 +2589,9 @@ describe('k8s-api', () => {
         subject._forEachApi(
           kubeConfig,
           resourceFunctionName,
-          (_, __) => {},
+          () => {
+            /** Do nothing */
+          },
           apis
         )
       ).not.to.be.rejected;
@@ -2596,7 +2616,9 @@ describe('k8s-api', () => {
         subject._forEachApi(
           kubeConfig,
           resourceFunctionName,
-          (_, __) => {},
+          () => {
+            /** Do nothing */
+          },
           apis
         )
       ).to.be.rejected;
@@ -2608,7 +2630,9 @@ describe('k8s-api', () => {
       await subject._forEachApi(
         kubeConfig,
         resourceFunctionName,
-        (_, __) => {},
+        () => {
+          /** Do nothing */
+        },
         apis
       );
 
