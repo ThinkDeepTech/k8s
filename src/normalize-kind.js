@@ -33,13 +33,26 @@ const normalizeKind = (prospectiveKind) => {
 };
 
 const removeVersion = (constructorName) => {
-  const matches = constructorName.match(/[A-Za-z]+(?!\d+)(?=[A-Za-z]*$)/);
+  if (!constructorName) return constructorName;
 
-  if (!matches) {
-    return constructorName;
+  return constructorName.slice(lastIntegerIndex(constructorName) + 1);
+};
+
+const lastIntegerIndex = (str) => {
+  const subject = str.trim();
+
+  let lastIndex = -1;
+  for (let i = 0; i < subject.length; i++) {
+    if (isNumber(subject[i])) {
+      lastIndex = i;
+    }
   }
 
-  return matches[0];
+  return lastIndex;
+};
+
+const isNumber = (str) => {
+  return !isNaN(str) && !isNaN(parseFloat(str));
 };
 
 export {normalizeKind};

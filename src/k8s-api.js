@@ -1,7 +1,7 @@
 import k8s from '@kubernetes/client-node';
 import {k8sManifest} from '@thinkdeep/k8s-manifest';
-import {ErrorNotFound} from './error/error-not-found.mjs';
-import {normalizeKind} from './normalize-kind.mjs';
+import {ErrorNotFound} from './error/error-not-found.js';
+import {normalizeKind} from './normalize-kind.js';
 
 const DEFAULT_NAMESPACE = 'default';
 

@@ -1,4 +1,4 @@
-import {K8sApi} from './k8s-api.mjs';
+import {K8sApi} from './k8s-api.js';
 import {k8sManifest, stringify} from '@thinkdeep/k8s-manifest';
 
 const createApi = () => new K8sApi();
