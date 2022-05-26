@@ -5,6 +5,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/ThinkDeepTech/k8s/badge.svg?branch=main)](https://coveralls.io/github/ThinkDeepTech/k8s?branch=main)
 [![Maintainability](https://api.codeclimate.com/v1/badges/4ccca42891ab6e7dc9b9/maintainability)](https://codeclimate.com/github/ThinkDeepTech/k8s/maintainability)
 [![Vulnerabilities](https://snyk.io/test/github/ThinkDeepTech/k8s/main/badge.svg)](https://snyk.io/test/github/ThinkDeepTech/k8s/main)
+[![Contact](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/haydenmcp/)
 
 Node client interfacing with a k8s cluster using simple functions and yaml template strings. If you're just interested in creating k8s javascript client objects using template strings, see [@thinkdeep/k8s-manifest](https://www.npmjs.com/package/@thinkdeep/k8s-manifest).
 
