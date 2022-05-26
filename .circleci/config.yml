@@ -37,6 +37,20 @@ jobs:
         - initialize_codebase
         - test_codebase
 
+    publish_test_coverage:
+      docker:
+        - image: 'cimg/base:stable'
+
+      working_directory: ~/project
+
+      steps:
+        - checkout
+        - setup_node_environment
+        - initialize_codebase
+        - run:
+            name: Publishing test coverage report.
+            command: yarn run tests:coverage:publish
+
 workflows:
 
   version: 2
@@ -46,3 +60,8 @@ workflows:
     jobs:
 
       - build_package
+
+      - publish_test_coverage:
+          filters:
+            branches:
+              only: master

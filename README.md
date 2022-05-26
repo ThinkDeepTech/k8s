@@ -1,6 +1,10 @@
 # @thinkdeep/k8s
 [![CircleCI](https://circleci.com/gh/ThinkDeepTech/k8s.svg?style=shield)](https://circleci.com/gh/ThinkDeepTech/k8s)
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=ThinkDeepTech_thinkdeep&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=ThinkDeepTech_k8s)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=ThinkDeepTech_k8s&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=ThinkDeepTech_k8s)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=ThinkDeepTech_k8s&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=ThinkDeepTech_k8s)
+[![Coverage Status](https://coveralls.io/repos/github/ThinkDeepTech/k8s/badge.svg?branch=master)](https://coveralls.io/github/ThinkDeepTech/k8s?branch=master)
+[![Maintainability](https://api.codeclimate.com/v1/badges/4ccca42891ab6e7dc9b9/maintainability)](https://codeclimate.com/github/ThinkDeepTech/k8s/maintainability)
+[![Vulnerabilities](https://snyk.io/test/github/ThinkDeepTech/k8s/master/badge.svg)](https://snyk.io/test/github/ThinkDeepTech/k8s/master)
 
 Node client interfacing with a k8s cluster using simple functions and yaml template strings. If you're just interested in creating k8s javascript client objects using template strings, see [@thinkdeep/k8s-manifest](https://www.npmjs.com/package/@thinkdeep/k8s-manifest).
 

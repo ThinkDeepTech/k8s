@@ -9,7 +9,8 @@
   "type": "module",
   "scripts": {
     "lint": "eslint --fix ./**/*.js",
-    "tests": "mocha ./test/**/*.test.js ./test/*.test.js"
+    "tests": "c8 --clean mocha ./test/**/*.test.js ./test/*.test.js",
+    "tests:coverage:publish": "yarn run tests && cat ./coverage/lcov.info | coveralls"
   },
   "husky": {
     "hooks": {
@@ -28,8 +29,10 @@
     "@thinkdeep/k8s-manifest": "^2.0.1"
   },
   "devDependencies": {
+    "c8": "^7.11.3",
     "chai": "^4.3.4",
     "chai-as-promised": "^7.1.1",
+    "coveralls": "^3.1.1",
     "eslint": "^8.14.0",
     "eslint-config-google": "^0.14.0",
     "eslint-config-prettier": "^8.5.0",

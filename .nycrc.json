@@ -1,0 +1,26 @@
+{
+    "all": true,
+    "reportDir": "coverage",
+    "cache": false,
+    "extension": [
+        ".js", ".cjs", ".mjs"
+    ],
+    "reporter": [
+        "lcov",
+        "text",
+        "text-summary"
+    ],
+    "include": [
+        "**/src/**/*.js"
+    ],
+    "exclude": [
+        "**/node_modules/**",
+        "**/test/**"
+    ],
+    "esModules": true,
+    "sourceMap": true,
+    "instrument": true,
+    "checkCoverage": false,
+    "ignoreClassMethods": [],
+    "produceSourceMap": true
+}
