@@ -49,7 +49,7 @@ jobs:
         - initialize_codebase
         - run:
             name: Publishing test coverage report.
-            command: yarn run tests:coverage:publish
+            command: npm run tests:coverage:publish
 
 workflows:
 
