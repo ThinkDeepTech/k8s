@@ -10,12 +10,12 @@
   "scripts": {
     "lint": "eslint --fix ./**/*.js",
     "tests": "c8 --clean mocha ./test/**/*.test.js ./test/*.test.js",
-    "tests:coverage:publish": "yarn run tests && cat ./coverage/lcov.info | coveralls"
+    "tests:coverage:publish": "npm run tests && cat ./coverage/lcov.info | coveralls"
   },
   "husky": {
     "hooks": {
       "pre-commit": "lint-staged",
-      "pre-push": "yarn run tests"
+      "pre-push": "npm run tests"
     }
   },
   "lint-staged": {
