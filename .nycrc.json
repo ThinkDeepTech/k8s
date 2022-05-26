@@ -15,9 +15,7 @@
     ],
     "exclude": [
         "**/node_modules/**",
-        "**/test/**",
-        "**/charts/**",
-        "./packages/deep-economic-analyzer/**"
+        "**/test/**"
     ],
     "esModules": true,
     "sourceMap": true,
