@@ -29,7 +29,7 @@
     "@thinkdeep/k8s-manifest": "^2.0.1"
   },
   "devDependencies": {
-    "c8": "^7.11.3",
+    "c8": "^9.0.0",
     "chai": "^4.3.4",
     "chai-as-promised": "^7.1.1",
     "coveralls": "^3.1.1",
